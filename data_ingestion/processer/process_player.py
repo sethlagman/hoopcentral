@@ -75,6 +75,7 @@ def process_player(raw_file=RAW_DIR / 'player_data.json'):
     with open(PROCESSED_DIR / 'statistic.json', 'w') as f:
         json.dump(total_statistics, f, indent=2)
 
+    print('Process player complete')
 
 if __name__ == '__main__':
     process_player()

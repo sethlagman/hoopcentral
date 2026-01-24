@@ -48,6 +48,7 @@ def process_standing(raw_file=RAW_DIR / 'standing_data.json'):
     with open(PROCESSED_DIR / 'standing.json', 'w') as f:
         json.dump(standings, f, indent=2)
 
+    print('Process standing complete')
 
 if __name__ == '__main__':
     process_standing()

@@ -35,6 +35,7 @@ def process_team(raw_file=RAW_DIR / 'team_data.json'):
     with open(PROCESSED_DIR / 'team.json', 'w') as f:
         json.dump(team_data, f, indent=2)
 
+    print('Process player complete')
 
 if __name__ == '__main__':
     process_team()
