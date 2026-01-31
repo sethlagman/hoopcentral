@@ -76,3 +76,21 @@ def team_standing(request, team_id):
     team_standing = Standing.objects.filter(team_id=team_id)
     serializer = StandingSerializer(team_standing, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+def player_statistic_season(request, player_id, season):
+    """Return a player statistic by season"""
+
+    player_statistic_season = Statistic.objects.filter(player_id=player_id, season=season)
+    serializer = StatisticSerializer(player_statistic_season, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+def team_standing_season(request, team_id, season):
+    """Return a team standing by season"""
+
+    team_standing = Standing.objects.filter(team_id=team_id, season=season)
+    serializer = StandingSerializer(team_standing, many=True)
+    return Response(serializer.data)
