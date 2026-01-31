@@ -30,7 +30,7 @@ class Player(models.Model):
         return self.full_name
 
 
-class Statistics(models.Model):
+class Statistic(models.Model):
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='statistics')
     season = models.CharField('Season statistic', max_length=30)
     ppg = models.DecimalField('Points per game', max_digits=5, decimal_places=1, null=True)
@@ -38,7 +38,7 @@ class Statistics(models.Model):
     apg = models.DecimalField('Assists per game', max_digits=5, decimal_places=1, null=True)
 
 
-class Standings(models.Model):
+class Standing(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='standings')
     season = models.CharField('Season statistic', max_length=30)
     conference = models.CharField('Team conference', max_length=20)
