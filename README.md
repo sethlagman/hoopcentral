@@ -2,6 +2,8 @@
 
 A comprehensive full-stack web application for everything related to sports
 
+![Hoop Central](assets/hoopcentral.png)
+
 ## Note
 
 This is still an ongoing project. The backend is complete and ready for use, with additional updates and improvements planned. The frontend is currently under development and has not yet been finalized. More features, UI enhancements, and integrations will be added as the project continues.
