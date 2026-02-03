@@ -6,6 +6,9 @@ A comprehensive full-stack web application for everything related to sports
 
 This is still an ongoing project. The backend is complete and ready for use, with additional updates and improvements planned. The frontend is currently under development and has not yet been finalized. More features, UI enhancements, and integrations will be added as the project continues.
 
+- **Sports Available**: NBA
+- **Additional Sports to be added**: NFL, MLB, NHL, UFC, F1
+
 ## 🏀 Features
 
 - **Team Data**: Access information about all NBA teams including details like city, state, year founded, and logos
