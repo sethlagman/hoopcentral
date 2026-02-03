@@ -1,6 +1,10 @@
 # HoopCentral
 
-A comprehensive REST API for NBA data built with Django and Django REST Framework. HoopCentral provides access to NBA teams, players, statistics, and standings through a clean, well-documented API.
+A comprehensive full-stack web application for everything related to sports
+
+## Note
+
+This is still an ongoing project. The backend is complete and ready for use, with additional updates and improvements planned. The frontend is currently under development and has not yet been finalized. More features, UI enhancements, and integrations will be added as the project continues.
 
 ## 🏀 Features
 
