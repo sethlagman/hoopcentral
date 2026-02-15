@@ -14,7 +14,7 @@ class Command(BaseCommand):
             'data_ingestion',
             'output',
             'processed',
-            'team.json')
+            'nba_team.json')
 
         file_path = os.path.abspath(file_path)
 

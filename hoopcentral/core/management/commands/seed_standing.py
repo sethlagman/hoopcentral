@@ -2,7 +2,7 @@ import json
 import os
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from core.models import Standings, Team
+from core.models import Standing, Team
 
 class Command(BaseCommand):
     help = 'Seed NBA standings into the database'
@@ -14,7 +14,7 @@ class Command(BaseCommand):
             'data_ingestion',
             'output',
             'processed',
-            'standing.json')
+            'nba_standing.json')
         
         file_path = os.path.abspath(file_path)
 
@@ -27,7 +27,7 @@ class Command(BaseCommand):
 
                     team = Team.objects.get(team_id=str(standing["id"]))
 
-                    Standings.objects.update_or_create(
+                    Standing.objects.update_or_create(
                         team=team,
                         season=year,
                         defaults={

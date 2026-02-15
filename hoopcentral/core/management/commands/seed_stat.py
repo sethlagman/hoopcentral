@@ -2,7 +2,7 @@ import json
 import os
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from core.models import Statistics, Player
+from core.models import Statistic, Player
 
 class Command(BaseCommand):
     help = 'Seed NBA statistics into the database'
@@ -14,7 +14,7 @@ class Command(BaseCommand):
             'data_ingestion',
             'output',
             'processed',
-            'statistic.json')
+            'nba_statistic.json')
 
         file_path = os.path.abspath(file_path)
 
@@ -27,7 +27,7 @@ class Command(BaseCommand):
 
                     player = Player.objects.get(player_id=str(stat["id"]))
 
-                    Statistics.objects.update_or_create(
+                    Statistic.objects.update_or_create(
                         player=player,
                         season=year,
                         defaults={

@@ -33,15 +33,15 @@ This is still an ongoing project. The backend is complete and ready for use, wit
 hoopcentral/
 ├── data_ingestion/          # Data fetching and processing scripts
 │   ├── fetcher/             # Scripts to fetch raw data from NBA API
-│   │   ├── get_player.py
-│   │   ├── get_team.py
-│   │   ├── get_standing.py
-│   │   ├── get_historical_player.py
-│   │   └── get_historical_standing.py
+│   │   ├── get_nba_player.py
+│   │   ├── get_nba_team.py
+│   │   ├── get_nba_standing.py
+│   │   ├── get_nba_historical_player.py
+│   │   └── get_nba_historical_standing.py
 │   ├── processer/           # Scripts to process raw data into structured format
-│   │   ├── process_player.py
-│   │   ├── process_team.py
-│   │   └── process_standing.py
+│   │   ├── process_nba_player.py
+│   │   ├── process_nba_team.py
+│   │   └── process_nba_standing.py
 │   └── output/
 │       ├── raw/             # Raw JSON data from API
 │       └── processed/       # Processed JSON data ready for seeding
@@ -133,19 +133,19 @@ Run the fetcher scripts to download raw data from the NBA API:
 
 ```bash
 # Fetch current player data
-python data_ingestion/fetcher/get_player.py
+python data_ingestion/fetcher/get_nba_player.py
 
 # Fetch team data
-python data_ingestion/fetcher/get_team.py
+python data_ingestion/fetcher/get_nba_team.py
 
 # Fetch standing data
-python data_ingestion/fetcher/get_standing.py
+python data_ingestion/fetcher/get_nba_standing.py
 
 # Fetch historical player data
-python data_ingestion/fetcher/get_historical_player.py
+python data_ingestion/fetcher/get_nba_historical_player.py
 
 # Fetch historical standing data
-python data_ingestion/fetcher/get_historical_standing.py
+python data_ingestion/fetcher/get_nba_historical_standing.py
 ```
 
 Raw data will be saved to `data_ingestion/output/raw/`.
@@ -156,13 +156,13 @@ Process the raw data into structured JSON format:
 
 ```bash
 # Process player data
-python data_ingestion/processer/process_player.py
+python data_ingestion/processer/process_nba_player.py
 
 # Process team data
-python data_ingestion/processer/process_team.py
+python data_ingestion/processer/process_nba_team.py
 
 # Process standing data
-python data_ingestion/processer/process_standing.py
+python data_ingestion/processer/process_nba_standing.py
 ```
 
 Processed data will be saved to `data_ingestion/output/processed/`.
