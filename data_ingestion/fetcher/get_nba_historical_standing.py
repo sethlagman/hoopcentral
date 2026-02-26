@@ -1,9 +1,13 @@
+import os
 import requests
 import json
 import time
 from pathlib import Path
+from dotenv import load_dotenv
+from datetime import datetime
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent / '.env')
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
 API_URL = 'https://stats.nba.com/stats/leaguestandingsv3'
 
@@ -72,7 +76,8 @@ def fetch_all_nba_historical_standings():
     output_path = OUTPUT_DIR / 'nba_historical_standing_data.json'
 
     start_year = 1970
-    end_year = 2025
+    current_year = datetime.today().year - 1
+    end_year = int(os.environ.get('END_YEAR', current_year))
 
     print(f"Starting historical standings data fetch into {output_path}...")
 
