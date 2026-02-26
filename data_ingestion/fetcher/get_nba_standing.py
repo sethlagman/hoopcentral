@@ -1,12 +1,16 @@
+import os
 import requests
 import json
 from pathlib import Path
+from dotenv import load_dotenv
 
 BASE_DIR = BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent / '.env')
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
 API_URL = 'https://stats.nba.com/stats/leaguestandingsv3'
+SEASON = os.environ.get('SEASON', '2025-26')
 
-def get_nba_standing(output_file=OUTPUT_DIR / 'nba_standing_data.json', season='2025-26'):
+def get_nba_standing(output_file=OUTPUT_DIR / 'nba_standing_data.json', season=SEASON):
     """
     Scrape league standings data from NBA stats API.
 

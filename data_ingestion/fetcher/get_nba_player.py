@@ -1,12 +1,16 @@
+import os
 import requests
 import json
 from pathlib import Path
+from dotenv import load_dotenv
 
 BASE_DIR = BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent / '.env')
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
 API_URL = 'https://stats.nba.com/stats/playerindex'
+SEASON = os.environ.get('SEASON', '2025-26')
 
-def get_nba_player(output_file=OUTPUT_DIR / 'nba_player_data.json', season='2025-26'):
+def get_nba_player(output_file=OUTPUT_DIR / 'nba_player_data.json', season=SEASON):
     """
     Scrape player index data from NBA stats API.
 
