@@ -31,6 +31,11 @@ This is still an ongoing project. The backend is complete and ready for use, wit
 
 ```
 hoopcentral/
+├── Dockerfile               # Backend image build
+├── docker-compose.yml       # Backend + PostgreSQL services
+├── .dockerignore            # Files excluded from Docker build
+├── DOCKER.md                # Docker setup and run guide
+├── .env                     # Environment variables
 ├── data_ingestion/          # Data fetching and processing scripts
 │   ├── fetcher/             # Scripts to fetch raw data from NBA API
 │   │   ├── get_nba_player.py
@@ -60,7 +65,9 @@ hoopcentral/
 │   └── hoopcentral/         # Django project settings
 │       ├── settings.py       # Django configuration
 │       └── urls.py           # Root URL configuration
-└── requirements.txt          # Python dependencies
+├── requirements.txt         # Python dependencies
+├── assets/                   # Static assets (e.g. images)
+└── LICENSE                   # Project license
 ```
 
 ## 🐳 Docker
