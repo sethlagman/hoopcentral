@@ -63,6 +63,10 @@ hoopcentral/
 └── requirements.txt          # Python dependencies
 ```
 
+## 🐳 Docker
+
+To run the backend and PostgreSQL with Docker, see **[DOCKER.md](DOCKER.md)** for configuration and commands.
+
 ## 🚀 Installation & Setup
 
 ### Prerequisites
