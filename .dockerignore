@@ -1,0 +1,72 @@
+# =============================================================================
+# .dockerignore - Files excluded from Docker build context
+# =============================================================================
+# These files/folders are NOT copied into the image during `docker build`
+# Benefits: Faster builds, smaller images, no secrets in image
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Git - version control history (not needed in container)
+# -----------------------------------------------------------------------------
+.git
+.gitignore
+.gitattributes
+
+# -----------------------------------------------------------------------------
+# Python - cached and virtual env (we install fresh deps in Docker)
+# -----------------------------------------------------------------------------
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv
+.venv
+env
+.env.local
+.env.*.local
+
+# -----------------------------------------------------------------------------
+# Environment and secrets - NEVER bake secrets into images
+# -----------------------------------------------------------------------------
+# Use docker-compose env_file or -e at runtime instead
+.env
+.env.example
+*.pem
+
+# -----------------------------------------------------------------------------
+# Build and IDE artifacts
+# -----------------------------------------------------------------------------
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+
+# -----------------------------------------------------------------------------
+# Data and output - generated at runtime, not needed in image
+# -----------------------------------------------------------------------------
+data_ingestion/output/
+*.log
+*.sqlite3
+
+# -----------------------------------------------------------------------------
+# Documentation and misc (optional - keeps image lean)
+# -----------------------------------------------------------------------------
+README.md
+LICENSE
+*.md
+
+# -----------------------------------------------------------------------------
+# Docker (avoid recursive copy)
+# -----------------------------------------------------------------------------
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# -----------------------------------------------------------------------------
+# Tests and dev tools (uncomment if you want to exclude)
+# -----------------------------------------------------------------------------
+# .pytest_cache
+# .coverage
+# htmlcov
