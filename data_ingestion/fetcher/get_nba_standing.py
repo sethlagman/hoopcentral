@@ -55,6 +55,9 @@ def get_nba_standing(output_file=OUTPUT_DIR / 'nba_standing_data.json', season=S
         # Parse JSON response
         data = response.json()
 
+        # Create output directory if it doesn't exist
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
         overall_data = {}
         if output_file.exists():
             with open(output_file, 'r') as f:

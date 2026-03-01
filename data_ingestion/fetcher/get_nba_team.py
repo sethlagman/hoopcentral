@@ -15,6 +15,9 @@ def get_nba_team(output_file=OUTPUT_DIR / 'nba_team_data.json'):
 
     data = teams.get_teams()
 
+    # Create output directory if it doesn't exist
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
     try:
         with open(output_file, 'w') as f:
             json.dump(data, f, indent=2)
