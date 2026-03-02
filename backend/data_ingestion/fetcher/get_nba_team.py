@@ -2,7 +2,7 @@ import json
 from nba_api.stats.static import teams
 from pathlib import Path
 
-BASE_DIR = BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
 
 def get_nba_team(output_file=OUTPUT_DIR / 'nba_team_data.json'):

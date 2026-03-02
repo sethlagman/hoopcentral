@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR.parent / '.env')
+load_dotenv(BASE_DIR.parent.parent / '.env')  # Project root .env
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
 API_URL = 'https://stats.nba.com/stats/playerindex'
 

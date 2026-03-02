@@ -4,18 +4,18 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 
-BASE_DIR = BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR.parent / '.env')
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent.parent / '.env')  # Project root .env
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
-API_URL = 'https://stats.nba.com/stats/playerindex'
+API_URL = 'https://stats.nba.com/stats/leaguestandingsv3'
 SEASON = os.environ.get('SEASON', '2025-26')
 
-def get_nba_player(output_file=OUTPUT_DIR / 'nba_player_data.json', season=SEASON):
+def get_nba_standing(output_file=OUTPUT_DIR / 'nba_standing_data.json', season=SEASON):
     """
-    Scrape player index data from NBA stats API.
+    Scrape league standings data from NBA stats API.
 
-    This function accesses the playerindex endpoint that nba.com/players uses
-    to fetch player data. It mimics a browser request with proper headers.
+    This function accesses the leaguestandingsv3 endpoint that nba.com uses
+    to fetch league standings data. It mimics a browser request with proper headers.
 
     :param output_file: Path to save the JSON response
     :type output_file: str
@@ -26,24 +26,17 @@ def get_nba_player(output_file=OUTPUT_DIR / 'nba_player_data.json', season=SEASO
 
     # Query parameters
     params = {
-        'College': '',
-        'Country': '',
-        'DraftPick': '',
-        'DraftRound': '',
-        'DraftYear': '',
-        'Height': '',
-        'Historical': '1',
+        'GroupBy': 'conf',
         'LeagueID': '00',
         'Season': season,
         'SeasonType': 'Regular Season',
-        'TeamID': '0',
-        'Weight': ''
+        'Section': 'overall'
     }
 
-    # Headers to mimic a browser request from nba.com/players
+    # Headers to mimic a browser request from nba.com
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://www.nba.com/players',
+        'Referer': 'https://www.nba.com/',
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
@@ -89,4 +82,4 @@ def get_nba_player(output_file=OUTPUT_DIR / 'nba_player_data.json', season=SEASO
 
 
 if __name__ == '__main__':
-    get_nba_player()
+    get_nba_standing()

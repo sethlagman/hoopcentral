@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-BASE_DIR = BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_DIR = BASE_DIR / 'output' / 'raw'
 PROCESSED_DIR = BASE_DIR / 'output' / 'processed'
 
