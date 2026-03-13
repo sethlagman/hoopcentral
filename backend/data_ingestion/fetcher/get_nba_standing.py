@@ -4,6 +4,11 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 
+try:
+    from .http_utils import get_with_retry
+except ImportError:
+    from http_utils import get_with_retry
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR.parent.parent / '.env')  # Project root .env
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
@@ -49,8 +54,7 @@ def get_nba_standing(output_file=OUTPUT_DIR / 'nba_standing_data.json', season=S
 
     try:
         print(f"Fetching data from {url}...")
-        response = requests.get(url, params=params, headers=headers, timeout=30)
-        response.raise_for_status()  # Raise an exception for bad status codes
+        response = get_with_retry(url, params=params, headers=headers)
 
         # Parse JSON response
         data = response.json()

@@ -6,6 +6,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
 
+try:
+    from .http_utils import get_with_retry
+except ImportError:
+    from http_utils import get_with_retry
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR.parent.parent / '.env')  # Project root .env
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
@@ -41,8 +46,7 @@ def get_nba_standing_for_season(output_file, season):
 
     try:
         print(f"Fetching standings data for season {season}...")
-        response = requests.get(API_URL, params=params, headers=headers, timeout=30)
-        response.raise_for_status()
+        response = get_with_retry(API_URL, params=params, headers=headers)
 
         data = response.json()
 
