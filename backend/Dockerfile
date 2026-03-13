@@ -59,4 +59,4 @@ EXPOSE 8000
 # 0.0.0.0 = listen on all interfaces (required for Docker port mapping)
 # 4 workers = typical for small-medium apps (adjust based on CPU)
 # Use runserver for development: CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "hoopcentral.wsgi:application"]
+CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "hoopcentral.wsgi:application"]
