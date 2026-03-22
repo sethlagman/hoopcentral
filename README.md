@@ -25,7 +25,6 @@ This is still an ongoing project. The backend is complete and ready for use, wit
 - **Backend**: Django + Django REST Framework
 - **Frontend**: React (Vite)
 - **Database**: PostgreSQL
-- **Environment Management**: python-dotenv
 
 ## 📁 Project Structure
 
@@ -43,11 +42,13 @@ hoopcentral/
 │       ├── fetcher/         # Fetch raw data from NBA API
 │       ├── processer/       # Process raw → structured JSON
 │       └── output/          # raw/ and processed/ JSON
+│
 ├── frontend/                # React (Vite) app
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   └── vite.config.js
+│   ├── src/                 # Core frontend (components, styles)
+│   ├── public/              # Static assets
+│   ├── package.json         # Metadata (dependencies and scripts)
+│   └── vite.config.js       # Vite Config
+│
 ├── docker-compose.yml       # Backend + DB + optional frontend
 ├── DOCKER.md                # Docker setup and run guide
 ├── .env                     # Environment variables (project root)
@@ -114,7 +115,11 @@ python manage.py migrate
 ```bash
 cd frontend
 npm install
+npm run dev
+npm run build
 ```
+
+Point requests at Django server (e.g. `http://localhost:8000`). Use `import.meta.env.VITE_API_URL` if you add it to `.env`.
 
 ### Step 6: Create Superuser (Optional)
 
