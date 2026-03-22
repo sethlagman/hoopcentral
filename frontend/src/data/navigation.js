@@ -1,0 +1,68 @@
+/** Subsection tabs per sport — matches frontend_style/hoopcentral.html */
+export const SUBSECTIONS = {
+  home: [],
+  nba: [
+    { id: 'nba-players', label: 'Players' },
+    { id: 'nba-player-stats', label: 'Player Stats' },
+    { id: 'nba-player-leaders', label: 'Player Leaderboards' },
+    { id: 'nba-teams', label: 'Teams' },
+    { id: 'nba-team-stats', label: 'Team Stats / Standings' },
+    { id: 'nba-team-leaders', label: 'Team Leaderboards' },
+    { id: 'nba-scores-tab', label: 'Scores & Schedule' },
+  ],
+  fifa: [
+    { id: 'fifa-players', label: 'Players' },
+    { id: 'fifa-player-stats', label: 'Player Stats' },
+    { id: 'fifa-player-leaders', label: 'Player Leaderboards' },
+    { id: 'fifa-teams', label: 'Teams' },
+    { id: 'fifa-team-stats', label: 'Team Stats / Standings' },
+    { id: 'fifa-team-leaders', label: 'Team Leaderboards' },
+    { id: 'fifa-scores-tab', label: 'Scores & Fixtures' },
+  ],
+  nfl: [
+    { id: 'nfl-players', label: 'Players' },
+    { id: 'nfl-player-stats', label: 'Player Stats' },
+    { id: 'nfl-player-leaders', label: 'Player Leaderboards' },
+    { id: 'nfl-teams', label: 'Teams' },
+    { id: 'nfl-team-stats', label: 'Team Stats / Standings' },
+    { id: 'nfl-team-leaders', label: 'Team Leaderboards' },
+    { id: 'nfl-scores-tab', label: 'Scores & Schedule' },
+  ],
+  mlb: [
+    { id: 'mlb-players', label: 'Players' },
+    { id: 'mlb-player-stats', label: 'Player Stats' },
+    { id: 'mlb-player-leaders', label: 'Player Leaderboards' },
+    { id: 'mlb-teams', label: 'Teams' },
+    { id: 'mlb-team-stats', label: 'Team Stats / Standings' },
+    { id: 'mlb-team-leaders', label: 'Team Leaderboards' },
+    { id: 'mlb-scores-tab', label: 'Scores & Schedule' },
+  ],
+  nhl: [
+    { id: 'nhl-players', label: 'Players' },
+    { id: 'nhl-player-stats', label: 'Player Stats' },
+    { id: 'nhl-player-leaders', label: 'Player Leaderboards' },
+    { id: 'nhl-teams', label: 'Teams' },
+    { id: 'nhl-team-stats', label: 'Team Stats / Standings' },
+    { id: 'nhl-team-leaders', label: 'Team Leaderboards' },
+    { id: 'nhl-scores-tab', label: 'Scores & Schedule' },
+  ],
+  mma: [
+    { id: 'mma-players', label: 'Fighters' },
+    { id: 'mma-player-stats', label: 'Fighter Stats' },
+    { id: 'mma-player-leaders', label: 'Fighter Leaderboards' },
+    { id: 'mma-teams', label: 'Gyms / Camps' },
+    { id: 'mma-team-stats', label: 'Gym Stats' },
+    { id: 'mma-team-leaders', label: 'Gym Leaderboards' },
+    { id: 'mma-scores-tab', label: 'Events & Results' },
+  ],
+}
+
+export const SPORT_TABS = [
+  { id: 'home', icon: '🏠', label: 'Home' },
+  { id: 'nba', icon: '🏀', label: 'NBA' },
+  { id: 'fifa', icon: '⚽', label: 'FIFA / Soccer' },
+  { id: 'nfl', icon: '🏈', label: 'NFL' },
+  { id: 'mlb', icon: '⚾', label: 'MLB' },
+  { id: 'nhl', icon: '🏒', label: 'NHL' },
+  { id: 'mma', icon: '🥊', label: 'MMA / UFC' },
+]
