@@ -1,4 +1,43 @@
-venv/
+# Global
 .env
+.env.local
+*.log
+*.local
+
+# Python / Django (backend)
+venv/
+.venv/
 __pycache__/
-data_ingestion/output/
+*.py[cod]
+
+# Django specific
+db.sqlite3
+*.sqlite3
+media/
+staticfiles/
+
+# Custom backend output
+backend/data_ingestion/output/
+
+# Frontend (React / Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
