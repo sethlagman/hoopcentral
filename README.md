@@ -22,8 +22,8 @@ This is still an ongoing project. The backend is complete and ready for use, wit
 
 ## 🛠️ Tech Stack
 
-- **Backend Framework**: Django
-- **API Framework**: Django REST Framework
+- **Backend**: Django + Django REST Framework
+- **Frontend**: React (Vite)
 - **Database**: PostgreSQL
 - **Environment Management**: python-dotenv
 
@@ -31,43 +31,28 @@ This is still an ongoing project. The backend is complete and ready for use, wit
 
 ```
 hoopcentral/
-├── Dockerfile               # Backend image build
-├── docker-compose.yml       # Backend + PostgreSQL services
-├── .dockerignore            # Files excluded from Docker build
+├── backend/                 # Django API + data ingestion
+│   ├── Dockerfile           # Backend image build
+│   ├── .dockerignore        # Backend build exclusions
+│   ├── requirements.txt     # Python dependencies
+│   ├── hoopcentral/         # Django project
+│   │   ├── core/            # Main app (models, views, serializers, API)
+│   │   ├── hoopcentral/     # Settings, URLs, WSGI
+│   │   └── manage.py
+│   └── data_ingestion/      # Data fetching and processing scripts
+│       ├── fetcher/         # Fetch raw data from NBA API
+│       ├── processer/       # Process raw → structured JSON
+│       └── output/          # raw/ and processed/ JSON
+├── frontend/                # React (Vite) app
+│   ├── src/
+│   ├── public/
+│   ├── package.json
+│   └── vite.config.js
+├── docker-compose.yml       # Backend + DB + optional frontend
 ├── DOCKER.md                # Docker setup and run guide
-├── .env                     # Environment variables
-├── data_ingestion/          # Data fetching and processing scripts
-│   ├── fetcher/             # Scripts to fetch raw data from NBA API
-│   │   ├── get_nba_player.py
-│   │   ├── get_nba_team.py
-│   │   ├── get_nba_standing.py
-│   │   ├── get_nba_historical_player.py
-│   │   └── get_nba_historical_standing.py
-│   ├── processer/           # Scripts to process raw data into structured format
-│   │   ├── process_nba_player.py
-│   │   ├── process_nba_team.py
-│   │   └── process_nba_standing.py
-│   └── output/
-│       ├── raw/             # Raw JSON data from API
-│       └── processed/       # Processed JSON data ready for seeding
-├── hoopcentral/             # Django project
-│   ├── core/                # Main application
-│   │   ├── models.py        # Database models (Team, Player, Statistic, Standing)
-│   │   ├── views.py         # API view functions
-│   │   ├── serializers.py   # DRF serializers
-│   │   ├── urls.py          # API URL routing
-│   │   └── management/
-│   │       └── commands/     # Django management commands for seeding
-│   │           ├── seed_player.py
-│   │           ├── seed_team.py
-│   │           ├── seed_stat.py
-│   │           └── seed_standing.py
-│   └── hoopcentral/         # Django project settings
-│       ├── settings.py       # Django configuration
-│       └── urls.py           # Root URL configuration
-├── requirements.txt         # Python dependencies
-├── assets/                   # Static assets (e.g. images)
-└── LICENSE                   # Project license
+├── .env                     # Environment variables (project root)
+├── assets/                  # Static assets (e.g. images)
+└── LICENSE
 ```
 
 ## 🐳 Docker
@@ -78,9 +63,8 @@ To run the backend and PostgreSQL with Docker, see **[DOCKER.md](DOCKER.md)** fo
 
 ### Prerequisites
 
-- Python 3.12+
-- PostgreSQL database
-- pip (Python package manager)
+- **Backend**: Python 3.12+, PostgreSQL, pip
+- **Frontend**: Node.js 18+, npm
 
 ### Step 1: Clone the Repository
 
@@ -89,48 +73,53 @@ git clone <repository-url>
 cd hoopcentral
 ```
 
-### Step 2: Create Virtual Environment
+### Step 2: Backend Setup
 
 ```bash
+cd backend
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-### Step 3: Install Dependencies
-
-```bash
+source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Step 4: Database Setup
+### Step 3: Environment Variables
 
-1. Create a PostgreSQL database:
-
-```sql
-CREATE DATABASE hoopcentral;
-```
-
-2. Create a `.env` file in the `hoopcentral/hoopcentral/` directory with the following variables:
+Create a `.env` file in the **project root**:
 
 ```env
 SECRET_KEY=your-secret-key-here
-DB_NAME=hoopcentral_db
-DB_USER=your-db-user
-DB_PASSWORD=your-db-password
+DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+DB_NAME=hoopcentral
+DB_USER=postgres
+DB_PASSWORD=your-password
 DB_HOST=localhost
 DB_PORT=5432
+END_YEAR=2025
+SEASON=2025-26
 ```
 
-### Step 5: Run Migrations
+### Step 4: Database & Migrations
+
+1. Create PostgreSQL database: `CREATE DATABASE hoopcentral;`
+2. Run migrations:
 
 ```bash
-cd hoopcentral
+cd backend/hoopcentral
 python manage.py migrate
+```
+
+### Step 5: Frontend Setup
+
+```bash
+cd frontend
+npm install
 ```
 
 ### Step 6: Create Superuser (Optional)
 
 ```bash
+cd backend/hoopcentral
 python manage.py createsuperuser
 ```
 
@@ -140,50 +129,34 @@ The project includes a complete data ingestion pipeline to fetch and process NBA
 
 ### 1. Fetch Raw Data
 
-Run the fetcher scripts to download raw data from the NBA API:
+From the project root, run fetchers (use the backend venv):
 
 ```bash
-# Fetch current player data
+cd backend
 python data_ingestion/fetcher/get_nba_player.py
-
-# Fetch team data
 python data_ingestion/fetcher/get_nba_team.py
-
-# Fetch standing data
 python data_ingestion/fetcher/get_nba_standing.py
-
-# Fetch historical player data
 python data_ingestion/fetcher/get_nba_historical_player.py
-
-# Fetch historical standing data
 python data_ingestion/fetcher/get_nba_historical_standing.py
 ```
 
-Raw data will be saved to `data_ingestion/output/raw/`.
+Raw data is saved to `backend/data_ingestion/output/raw/`.
 
 ### 2. Process Data
 
-Process the raw data into structured JSON format:
-
 ```bash
-# Process player data
+cd backend
 python data_ingestion/processer/process_nba_player.py
-
-# Process team data
 python data_ingestion/processer/process_nba_team.py
-
-# Process standing data
 python data_ingestion/processer/process_nba_standing.py
 ```
 
-Processed data will be saved to `data_ingestion/output/processed/`.
+Processed data is saved to `backend/data_ingestion/output/processed/`.
 
 ### 3. Seed Database
 
-Use Django management commands to populate the database:
-
 ```bash
-cd hoopcentral
+cd backend/hoopcentral
 
 # Seed teams (must be done first)
 python manage.py seed_team
@@ -348,10 +321,22 @@ fetch(`${BASE_URL}/statistic/1629029/2024-25`)
 
 ## 🏃 Running the Development Server
 
+**Backend** (from project root):
+
 ```bash
-cd hoopcentral
+cd backend/hoopcentral
 python manage.py runserver
 ```
+
+**Frontend** (from project root):
+
+```bash
+cd frontend
+npm run dev
+```
+
+- Backend API: http://localhost:8000
+- Frontend: http://localhost:5173
 
 ## 📝 Data Models
 
@@ -404,6 +389,7 @@ python manage.py runserver
 ### Running Tests
 
 ```bash
+cd backend/hoopcentral
 python manage.py test
 ```
 
@@ -412,6 +398,7 @@ python manage.py test
 After modifying models:
 
 ```bash
+cd backend/hoopcentral
 python manage.py makemigrations
 python manage.py migrate
 ```
@@ -420,6 +407,7 @@ python manage.py migrate
 
 1. Create a superuser (if not already done):
    ```bash
+   cd backend/hoopcentral
    python manage.py createsuperuser
    ```
 
@@ -428,9 +416,14 @@ python manage.py migrate
    http://localhost:8000/admin/
    ```
 
+### Frontend Development
+
+The React app uses Vite. When you connect to the API, add `frontend/.env` and set `VITE_API_URL` (e.g. `http://localhost:8000`).
+
 ## 📦 Dependencies
 
-See `requirements.txt` for the complete list.
+- **Backend:** `backend/requirements.txt`
+- **Frontend:** `frontend/package.json`
 
 ## 🤝 Contributing
 
