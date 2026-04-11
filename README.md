@@ -1,6 +1,6 @@
 # HoopCentral
 
-Your go-to source for everything about sports
+Your go-to source for everything about sports stats, news, and everything sports-related.
 
 ![Hoop Central](assets/hoopcentral.png)
 
