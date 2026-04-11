@@ -1,6 +1,6 @@
 # HoopCentral
 
-A comprehensive full-stack web application for everything related to sports
+Your go-to source for everything about sports
 
 ![Hoop Central](assets/hoopcentral.png)
 
