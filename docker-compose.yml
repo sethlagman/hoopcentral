@@ -1,10 +1,10 @@
 # =============================================================================
 # HoopCentral - Docker Compose
 # =============================================================================
-# Run:    docker-compose up -d
-# Rebuild: docker-compose up -d --build
-# Stop:   docker-compose down
-# Logs:   docker-compose logs -f backend
+# Run:    docker compose up -d
+# Rebuild: docker compose up -d --build
+# Stop:   docker compose down
+# Logs:   docker compose logs -f backend
 # =============================================================================
 
 services:
@@ -39,7 +39,9 @@ services:
   # Django Backend
   # ---------------------------------------------------------------------------
   backend:
-    build: .
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: hoopcentral-backend
     restart: unless-stopped
     # Load env vars from .env file (DB_NAME, SECRET_KEY, etc.)
@@ -60,7 +62,26 @@ services:
     # Run migrations on startup (optional - comment out if you prefer manual migrations)
     command: >
       sh -c "python manage.py migrate --noinput &&
-             gunicorn --bind 0.0.0.0:8000 --workers 4 hoopcentral.wsgi:application"
+             python -m gunicorn --bind 0.0.0.0:8000 --workers 4 hoopcentral.wsgi:application"
+
+  # ---------------------------------------------------------------------------
+  # React Frontend (development with hot reload)
+  # ---------------------------------------------------------------------------
+  frontend:
+    image: node:20-alpine
+    container_name: hoopcentral-frontend
+    working_dir: /app
+    # Mount source for hot reload - no image build needed for dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Prevent host node_modules from overwriting container's
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    command: sh -c "npm install && npm run dev"
+    # profiles:
+    #   - frontend  # Only start with: docker compose --profile frontend up
 
 # ---------------------------------------------------------------------------
 # Named volumes - persistent storage for database

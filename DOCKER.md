@@ -1,6 +1,8 @@
 # Docker Setup Guide
 
-This guide covers configuring and running HoopCentral with Docker. Docker Compose runs the Django backend and PostgreSQL database together.
+This guide covers configuring and running HoopCentral with Docker. The project is split into:
+- **backend/** — Django API + data ingestion
+- **frontend/** — React (Vite) app
 
 ## Prerequisites
 
@@ -61,10 +63,22 @@ docker compose up -d --build
 - `-d` runs containers in the background
 - `--build` builds the image (use on first run or after code changes)
 
-### Access the API
+### Access the application
 
-- **Backend:** http://localhost:8000
+- **Backend API:** http://localhost:8000
 - **API base:** http://localhost:8000/api/
+
+### Frontend
+
+The React frontend can be run in a separate container. Start it with:
+
+```bash
+docker compose --profile frontend up -d
+```
+
+- **Frontend:** http://localhost:5173
+
+Or run the frontend locally for development: `cd frontend && npm run dev`
 
 ### View logs
 
@@ -161,16 +175,12 @@ docker compose exec backend sh -c "cd /app && python data_ingestion/fetcher/get_
 
 ### Port already in use
 
-If ports 8000 or 5432 are in use, change them in `docker-compose.yml`:
+If ports are in use, change them in `docker-compose.yml`. The database already uses **5433** on the host (to avoid conflict with local PostgreSQL). For the backend:
 
 ```yaml
 # backend service
 ports:
   - "8001:8000"   # Use 8001 on host instead
-
-# db service
-ports:
-  - "5433:5432"   # Use 5433 on host instead
 ```
 
 Then use http://localhost:8001 for the API.
@@ -196,10 +206,20 @@ docker compose exec backend env
 
 ## Project Layout (Docker)
 
+**On host:**
+```
+hoopcentral/
+├── backend/           # Docker build context for backend
+├── frontend/          # Mounted into frontend container
+├── docker-compose.yml
+└── .env
+```
+
+**Inside backend container (`/app`):**
 ```
 /app/
-├── data_ingestion/     # Fetchers and processors
-├── hoopcentral/        # Django project (WORKDIR for manage.py)
+├── data_ingestion/    # Fetchers and processors
+├── hoopcentral/       # Django project (WORKDIR for manage.py)
 │   ├── manage.py
 │   ├── core/
 │   └── hoopcentral/
