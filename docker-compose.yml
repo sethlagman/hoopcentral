@@ -9,6 +9,17 @@
 
 services:
   # ---------------------------------------------------------------------------
+  # Initialize host directories used by ingestion pipeline
+  # ---------------------------------------------------------------------------
+  init-output-dir:
+    image: alpine:3.20
+    container_name: hoopcentral-init-output-dir
+    command: sh -c "mkdir -p /work/data_ingestion/output/processed"
+    volumes:
+      - ./:/work
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
   # PostgreSQL Database
   # ---------------------------------------------------------------------------
   db:
@@ -54,6 +65,8 @@ services:
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
     # Wait for database to be ready before starting
     depends_on:
+      init-output-dir:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     # Expose Django on port 8000 - access at http://localhost:8000
@@ -80,6 +93,9 @@ services:
     environment:
       VITE_API_URL: http://localhost:8000
     command: sh -c "npm install && npm run dev"
+    depends_on:
+      init-output-dir:
+        condition: service_completed_successfully
     # profiles:
     #   - frontend  # Only start with: docker compose --profile frontend up
 
