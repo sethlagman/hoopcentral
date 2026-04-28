@@ -25,6 +25,7 @@ urlpatterns = [
     path("team", team_list, name="team"),
     path("standing", standing_list, name="standing"),
     path("statistic", statistic_list, name="statistic"),
+
     # IDs and detail
     path("player/<int:player_id>", player_id, name="player_id"),
     path("team/<int:team_id>", team_id, name="team_id"),
@@ -40,6 +41,7 @@ urlpatterns = [
         team_standing_season,
         name="team_standing_season",
     ),
+
     # Search and leaders
     path("player/search/", player_search, name="player_search"),
     path(
@@ -47,6 +49,7 @@ urlpatterns = [
         stat_leaders,
         name="stat_leaders",
     ),
+    
     # Comparison and summary
     path(
         "team/compare/<int:team_id_1>/<int:team_id_2>/<str:season>",
