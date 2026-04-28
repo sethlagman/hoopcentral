@@ -991,6 +991,147 @@ footer {
   font-size: 11px;
   color: #bbb;
 }
+/* ----- API-connected NBA panels (reuse site chrome) ----- */
+.hc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.hc-toolbar-meta {
+  font-size: 11px;
+  color: #666;
+  letter-spacing: 0.4px;
+}
+
+.hc-input,
+.hc-select {
+  border: 1px solid #d6d6d6;
+  border-radius: 3px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  color: #111;
+}
+
+/* No focus / click ring (avoid browser default red ring on number inputs, etc.) */
+.hc-input:focus,
+.hc-input:focus-visible,
+.hc-select:focus,
+.hc-select:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+button.hc-btn:focus,
+button.hc-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/** Keep border neutral while focused — overrides UA red on invalid optional number fields */
+.hc-input:invalid {
+  border-color: #d6d6d6;
+  box-shadow: none;
+}
+
+.hc-input:focus:invalid {
+  outline: none;
+  border-color: #d6d6d6;
+}
+
+.hc-input::placeholder {
+  color: #999;
+}
+
+.hc-input-narrow {
+  max-width: 72px;
+}
+
+.hc-btn {
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 7px 14px;
+  border-radius: 3px;
+  transition: background 0.1s;
+}
+
+.hc-btn:hover:not(:disabled) {
+  background: #333;
+  border-color: #333;
+}
+
+.hc-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.hc-btn-ghost {
+  background: #fff;
+  color: #111;
+  border-color: #ccc;
+}
+
+.hc-btn-ghost:hover:not(:disabled) {
+  background: #f7f7f7;
+}
+
+.hc-muted {
+  font-size: 12px;
+  color: #666;
+}
+
+.hc-api-msg {
+  padding: 10px 14px;
+  border: 1px solid #e0e0e0;
+  font-size: 12px;
+  margin-bottom: 10px;
+  background: #fafafa;
+}
+
+.hc-api-err {
+  border-color: #f0cbcb;
+  background: #fff8f8;
+  color: #a40000;
+}
+
+.hc-card {
+  border: 1px solid #e0e0e0;
+  padding: 12px 14px;
+  margin-top: 8px;
+}
+
+.hc-card-title {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.hc-card-row {
+  font-size: 13px;
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+.hc-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 760px) {
+  .hc-compare-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 /* RESPONSIVE */
 @media (max-width: 1000px) {
