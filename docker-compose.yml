@@ -91,7 +91,8 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://localhost:8000
+      # Must include /api — same as resolveApiRoot(); browser calls host:8000 from the machine
+      VITE_API_URL: http://localhost:8000/api
     command: sh -c "npm install && npm run dev"
     depends_on:
       init-output-dir:
