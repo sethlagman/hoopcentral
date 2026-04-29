@@ -112,6 +112,28 @@ def _players_active_in_league_year(players_queryset, league_year):
     )
 
 
+def _same_league_campaign_as_env(season_param):
+    """
+    True when ``season_param`` resolves to the same NBA league-start year as ``SEASON``.
+
+    ``Player.is_active`` reflects *today's* roster status. Applying it when answering
+    "who led the league in 2015-16?" would wrongly drop retired players who were
+    active that year. So for any *other* league year we still use career
+    ``year_start`` / ``year_end`` overlap; for the **current** configured campaign
+    (same year as ``SEASON``), we trust ``is_active`` and skip the career window.
+    """
+
+    env_key = SEASON.strip()
+    req_key = str(season_param).strip()
+    if not env_key or not req_key:
+        return False
+    env_vars = list(dict.fromkeys(season_lookup_variants(env_key)))
+    req_vars = list(dict.fromkeys(season_lookup_variants(req_key)))
+    y_env = resolve_season_start_year(env_key, env_vars)
+    y_req = resolve_season_start_year(req_key, req_vars)
+    return y_env is not None and y_req is not None and y_env == y_req
+
+
 def _statistics_players_active_in_season(queryset, season_y):
     """
     Statistic rows only for players whose career [year_start, year_end]
@@ -302,8 +324,11 @@ def stat_leaders(request, season, stat_category):
 
     ``stat_category`` must be ``points_per_game``, ``assists_per_game``, or
     ``rebounds_per_game``. Optional query ``limit`` (default 10, maximum 100).
-    Null stat values are excluded; only players whose career years include the
-    season's league year are returned.
+    Null stat values are excluded.
+
+    For the league year matching ``SEASON`` (current campaign), only statistics for
+    ``Player.is_active`` players are considered. Older seasons still filter by
+    career ``year_start``/``year_end`` overlap with that season's league year.
     """
 
     if stat_category not in STAT_LEADER_FIELDS:
@@ -314,13 +339,17 @@ def stat_leaders(request, season, stat_category):
     field = STAT_LEADER_FIELDS[stat_category]
     variants = season_lookup_variants(season)
     season_y = resolve_season_start_year(season, variants)
+    season_param = str(season).strip()
 
     leaders = (
         Statistic.objects.select_related("player")
         .filter(season__in=variants)
         .filter(**{f"{field}__isnull": False})
     )
-    leaders = _statistics_players_active_in_season(leaders, season_y)
+    if _same_league_campaign_as_env(season_param):
+        leaders = leaders.filter(player__is_active=True)
+    else:
+        leaders = _statistics_players_active_in_season(leaders, season_y)
     leaders = leaders.order_by(f"-{field}")[:limit]
     serializer = StatisticSerializer(leaders, many=True)
     return Response(serializer.data)
@@ -409,14 +438,53 @@ def team_roster_current(request, team_id):
     """
     Franchise roster tied to the configured ``SEASON`` (``SEASON`` in ``.env``).
 
-    Includes players assigned to ``team_id`` who have statistics in that season and
-    whose career year range still covers the season's league year.
+    Players must have statistics for that season and ``Player.is_active`` True.
+    Career ``year_start``/``year_end`` are not used here so waived or inactive
+    players are omitted even when ``year_end`` still covers the league year.
     """
 
     tid = str(team_id)
     team = _team_optional(tid)
 
     season_key = SEASON
+    variants = list(dict.fromkeys(season_lookup_variants(season_key)))
+
+    players_qs = (
+        Player.objects.filter(team_id=tid, is_active=True)
+        .filter(statistics__season__in=variants)
+        .select_related("team")
+        .distinct()
+        .order_by("full_name")
+    )
+
+    serializer = PlayerSerializer(players_qs, many=True)
+    return Response(
+        {
+            "team": TeamSerializer(team).data if team is not None else None,
+            "season": season_key,
+            "roster": serializer.data,
+            "roster_size": players_qs.count(),
+            "roster_scope": "active_only",
+        }
+    )
+
+
+@api_view(["GET"])
+def team_roster_season(request, team_id, season):
+    """
+    Franchise roster for an arbitrary NBA ``season`` key (e.g. ``2024`` or ``2025-26``).
+
+    When ``season`` matches the league year of ``SEASON`` (current campaign),
+    results use ``Player.is_active`` only (same rules as ``team_roster_current``).
+    For older seasons, inclusion uses career ``year_start``/``year_end`` overlap.
+    """
+
+    tid = str(team_id)
+    team = _team_optional(tid)
+    season_key = str(season).strip()
+    if not season_key:
+        return Response({"error": "Season is required"}, status=400)
+
     variants = list(dict.fromkeys(season_lookup_variants(season_key)))
     league_y = resolve_season_start_year(season_key, variants)
 
@@ -426,15 +494,22 @@ def team_roster_current(request, team_id):
         .select_related("team")
         .distinct()
     )
-    players_qs = _players_active_in_league_year(players_qs, league_y).order_by("full_name")
+    if _same_league_campaign_as_env(season_key):
+        players_qs = players_qs.filter(is_active=True)
+        roster_scope = "active_only"
+    else:
+        players_qs = _players_active_in_league_year(players_qs, league_y)
+        roster_scope = "career_years"
+    players_qs = players_qs.order_by("full_name")
 
     serializer = PlayerSerializer(players_qs, many=True)
     return Response(
         {
             "team": TeamSerializer(team).data if team is not None else None,
-            "season": season_key,
+            "season": resolved_season_label(variants) if variants else season_key,
             "roster": serializer.data,
             "roster_size": players_qs.count(),
+            "roster_scope": roster_scope,
         }
     )
 
