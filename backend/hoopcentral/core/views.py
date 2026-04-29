@@ -155,20 +155,22 @@ def team_list(request):
 
 @api_view(["GET"])
 def statistic_list(request):
-    """Returns all player statistics"""
-
-    statistics = Statistic.objects.all()
-    serializer = StatisticSerializer(statistics, many=True)
-    return Response(serializer.data)
+    """Paginated player statistics index (`page`, `page_size` — same semantics as `/player`)."""
+    statistics = Statistic.objects.all().select_related("player").order_by("pk")
+    paginator = StandardPagination()
+    result = paginator.paginate_queryset(statistics, request)
+    serializer = StatisticSerializer(result, many=True)
+    return paginator.get_paginated_response(serializer.data)
 
 
 @api_view(["GET"])
 def standing_list(request):
-    """Returns all team standings"""
-
-    standings = Standing.objects.all().select_related("team")
-    serializer = StandingSerializer(standings, many=True)
-    return Response(serializer.data)
+    """Paginated team standings index (`page`, `page_size` — same semantics as `/player`)."""
+    standings = Standing.objects.all().select_related("team").order_by("pk")
+    paginator = StandardPagination()
+    result = paginator.paginate_queryset(standings, request)
+    serializer = StandingSerializer(result, many=True)
+    return paginator.get_paginated_response(serializer.data)
 
 
 @api_view(["GET"])
