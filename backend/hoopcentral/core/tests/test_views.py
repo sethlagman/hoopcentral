@@ -126,7 +126,44 @@ class StatLeaderTests(TestCase):
         self.assertEqual(r.status_code, status.HTTP_200_OK)
         self.assertLessEqual(len(r.json()), 10)
 
+    def test_leaders_current_campaign_excludes_inactive_even_if_career_span_overlaps(self):
+        t = _mk_team("603")
+        active = _mk_player(t, pid="603-a", full_name="Active Leader", last_name="A")
+        inactive = _mk_player(
+            t,
+            pid="603-i",
+            full_name="Inactive Leader",
+            last_name="I",
+            year_start="2020",
+            year_end="2030",
+            is_active=False,
+        )
+        _mk_stat(active, ppg=Decimal("15.0"))
+        _mk_stat(inactive, ppg=Decimal("99.0"))
+        r = self.client.get("/api/leaders/2025-26/points_per_game", {"limit": "10"})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        ids = [row["player"] for row in r.json()]
+        self.assertIn("603-a", ids)
+        self.assertNotIn("603-i", ids)
 
+    def test_leaders_historical_season_does_not_use_current_is_active_flag(self):
+        t = _mk_team("604")
+        retired_now = _mk_player(
+            t,
+            pid="604-old",
+            full_name="Old Star",
+            last_name="O",
+            year_start="2010",
+            year_end="2018",
+            is_active=False,
+        )
+        _mk_stat(retired_now, season="2015-16", ppg=Decimal("42.0"))
+        r = self.client.get("/api/leaders/2015-16/points_per_game", {"limit": "10"})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        ids = [row["player"] for row in r.json()]
+        self.assertIn("604-old", ids)
+
+        
 class ComparisonSummaryTests(TestCase):
     databases = {"default"}
 
@@ -191,6 +228,7 @@ class CareerAndRosterTests(TestCase):
             last_name="Vet",
             year_start="1999",
             year_end="2020",
+            is_active=False,
         )
         _mk_stat(active)
         _mk_stat(retired)
@@ -199,6 +237,27 @@ class CareerAndRosterTests(TestCase):
         ids = {row["player_id"] for row in r.json()["roster"]}
         self.assertIn("803-a", ids)
         self.assertNotIn("803-r", ids)
+
+    @patch("core.views.SEASON", "2025-26")
+    def test_team_roster_current_excludes_inactive_even_if_career_span_overlaps(self):
+        t = _mk_team("805")
+        active = _mk_player(t, pid="805-a")
+        waived = _mk_player(
+            t,
+            pid="805-w",
+            full_name="Waived Guy",
+            last_name="Guy",
+            year_start="2020",
+            year_end="2030",
+            is_active=False,
+        )
+        _mk_stat(active)
+        _mk_stat(waived)
+        r = self.client.get("/api/team/805/roster/current")
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        ids = {row["player_id"] for row in r.json()["roster"]}
+        self.assertIn("805-a", ids)
+        self.assertNotIn("805-w", ids)
 
     def test_team_roster_full_lists_assignments(self):
         t = _mk_team("804")
