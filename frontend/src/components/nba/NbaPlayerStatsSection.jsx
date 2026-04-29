@@ -15,6 +15,13 @@ import {
 } from '../../api/hoopcentral.js'
 import { ApiState, HcToolbar } from './ApiUi.jsx'
 
+/** Career stat average display (single decimal place). */
+function formatAvgOneDecimal(v) {
+  if (v === null || v === undefined || v === '') return '—'
+  const n = Number(v)
+  return Number.isFinite(n) ? n.toFixed(1) : '—'
+}
+
 export default function NbaPlayerStatsSection({ activeId }) {
   const visible = activeId === 'nba-player-stats'
   const [playerId, setPlayerId] = useState('')
@@ -47,6 +54,8 @@ export default function NbaPlayerStatsSection({ activeId }) {
   const [standingsSeason, setStandingsSeason] = useState(null)
   const [stsLoading, setStsLoading] = useState(false)
   const [stsErr, setStsErr] = useState(null)
+  /** Roster vs standings views are mutually exclusive in the UI */
+  const [teamPanel, setTeamPanel] = useState(null) // 'roster' | 'fullStandings' | 'seasonStandings'
 
   const [bulk, setBulk] = useState(null)
   const [bulkPage, setBulkPage] = useState(1)
@@ -96,6 +105,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
   const loadRoster = (e) => {
     e.preventDefault()
     if (!teamId.trim()) return
+    setTeamPanel('roster')
     setRLoading(true)
     setRErr(null)
     fetchTeamRoster(teamId.trim())
@@ -107,6 +117,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
   const loadTeamStandings = (e) => {
     e.preventDefault()
     if (!teamId.trim()) return
+    setTeamPanel('fullStandings')
     setStLoading(true)
     setStErr(null)
     fetchTeamStandings(teamId.trim())
@@ -118,6 +129,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
   const loadTeamStandingsSeason = (e) => {
     e.preventDefault()
     if (!teamId.trim()) return
+    setTeamPanel('seasonStandings')
     setStsLoading(true)
     setStsErr(null)
     fetchTeamStandingsSeason(teamId.trim(), season.trim())
@@ -266,14 +278,14 @@ export default function NbaPlayerStatsSection({ activeId }) {
           <>
             <div className="hc-card">
               <div className="hc-card-row">
-                Avg PTS {career.career_summary?.avg_points ?? '—'} · RPG{' '}
-                {career.career_summary?.avg_rebounds ?? '—'} · APG{' '}
-                {career.career_summary?.avg_assists ?? '—'}
+                Avg PTS {formatAvgOneDecimal(career.career_summary?.avg_points)} · RPG{' '}
+                {formatAvgOneDecimal(career.career_summary?.avg_rebounds)} · APG{' '}
+                {formatAvgOneDecimal(career.career_summary?.avg_assists)}
               </div>
               <div className="hc-card-row hc-muted">
                 Seasons in breakdown: {career.career_summary?.seasons_count ?? '—'} · Best:{' '}
                 {career.career_summary?.best_scoring_season
-                  ? `${career.career_summary.best_scoring_season.season}: ${career.career_summary.best_scoring_season.ppg ?? '—'} PPG`
+                  ? `${career.career_summary.best_scoring_season.season}: ${formatAvgOneDecimal(career.career_summary.best_scoring_season.ppg)} PPG`
                   : '—'}
               </div>
             </div>
@@ -290,9 +302,9 @@ export default function NbaPlayerStatsSection({ activeId }) {
                 {(career.season_breakdown || []).map((s) => (
                   <tr key={s.id}>
                     <td>{s.season}</td>
-                    <td className="stat-hi">{s.ppg ?? '—'}</td>
-                    <td>{s.rpg ?? '—'}</td>
-                    <td>{s.apg ?? '—'}</td>
+                    <td className="stat-hi">{formatAvgOneDecimal(s.ppg)}</td>
+                    <td>{formatAvgOneDecimal(s.rpg)}</td>
+                    <td>{formatAvgOneDecimal(s.apg)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -313,86 +325,137 @@ export default function NbaPlayerStatsSection({ activeId }) {
             onChange={(e) => setTeamId(e.target.value)}
             aria-label="Team ID"
           />
-          <button type="button" className="hc-btn" onClick={loadRoster} disabled={rLoading}>
+          <button
+            type="button"
+            className={
+              teamPanel === null || teamPanel === 'roster' ? 'hc-btn' : 'hc-btn hc-btn-ghost'
+            }
+            aria-pressed={teamPanel === null || teamPanel === 'roster'}
+            onClick={loadRoster}
+            disabled={rLoading}
+          >
             {rLoading ? '…' : 'Roster'}
           </button>
-          <button type="button" className="hc-btn hc-btn-ghost" onClick={loadTeamStandings} disabled={stLoading}>
+          <button
+            type="button"
+            className={teamPanel === 'fullStandings' ? 'hc-btn' : 'hc-btn hc-btn-ghost'}
+            aria-pressed={teamPanel === 'fullStandings'}
+            onClick={loadTeamStandings}
+            disabled={stLoading}
+          >
             {stLoading ? '…' : 'Full history'}
           </button>
           <button
             type="button"
-            className="hc-btn hc-btn-ghost"
+            className={
+              teamPanel === 'seasonStandings' ? 'hc-btn' : 'hc-btn hc-btn-ghost'
+            }
+            aria-pressed={teamPanel === 'seasonStandings'}
             onClick={loadTeamStandingsSeason}
             disabled={stsLoading}
           >
             {stsLoading ? '…' : 'This season'}
           </button>
         </form>
-        {rErr ? <div className="hc-api-msg hc-api-err">{rErr}</div> : null}
-        {stErr ? <div className="hc-api-msg hc-api-err">{stErr}</div> : null}
-        {stsErr ? <div className="hc-api-msg hc-api-err">{stsErr}</div> : null}
-        {roster ? (
-          <div style={{ marginTop: 12 }}>
-            <div className="hc-muted">Roster size: {roster.roster_size}</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th>ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(roster.roster || []).map((p) => (
-                  <tr key={p.player_id}>
-                    <td>{p.full_name}</td>
-                    <td>{p.player_id}</td>
+        {rErr && teamPanel === 'roster' ? (
+          <div className="hc-api-msg hc-api-err">{rErr}</div>
+        ) : null}
+        {stErr && teamPanel === 'fullStandings' ? (
+          <div className="hc-api-msg hc-api-err">{stErr}</div>
+        ) : null}
+        {stsErr && teamPanel === 'seasonStandings' ? (
+          <div className="hc-api-msg hc-api-err">{stsErr}</div>
+        ) : null}
+
+        {teamPanel === 'roster' ? (
+          <>
+            {rLoading ? <div className="hc-api-msg">Loading…</div> : null}
+            {!rLoading && !rErr && roster ? (
+              <div style={{ marginTop: 12 }}>
+                <div className="hc-muted">Roster size: {roster.roster_size}</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Player</th>
+                      <th>ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(roster.roster || []).map((p) => (
+                      <tr key={p.player_id}>
+                        <td>{p.full_name}</td>
+                        <td>{p.player_id}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+
+        {teamPanel === 'fullStandings' ? (
+          <>
+            {stLoading ? <div className="hc-api-msg">Loading…</div> : null}
+            {!stLoading && !stErr && standings?.length ? (
+              <table style={{ marginTop: 12 }}>
+                <thead>
+                  <tr>
+                    <th>Season</th>
+                    <th>W</th>
+                    <th>L</th>
+                    <th>PCT</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {standings.map((row) => (
+                    <tr key={`${row.id}-${row.season}`}>
+                      <td>{row.season}</td>
+                      <td>{row.wins}</td>
+                      <td>{row.losses}</td>
+                      <td>{row.winrate}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : null}
+            {!stLoading && !stErr && Array.isArray(standings) && standings.length === 0 ? (
+              <p className="hc-muted" style={{ marginTop: 12 }}>
+                No standings rows for this team.
+              </p>
+            ) : null}
+          </>
         ) : null}
-        {standings?.length ? (
-          <table style={{ marginTop: 12 }}>
-            <thead>
-              <tr>
-                <th>Season</th>
-                <th>W</th>
-                <th>L</th>
-                <th>PCT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((row) => (
-                <tr key={`${row.id}-${row.season}`}>
-                  <td>{row.season}</td>
-                  <td>{row.wins}</td>
-                  <td>{row.losses}</td>
-                  <td>{row.winrate}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
-        {standingsSeason?.length ? (
-          <table style={{ marginTop: 12 }}>
-            <thead>
-              <tr>
-                <th>Season</th>
-                <th>W</th>
-                <th>L</th>
-              </tr>
-            </thead>
-            <tbody>
-              {standingsSeason.map((row) => (
-                <tr key={`${row.id}-${row.season}`}>
-                  <td>{row.season}</td>
-                  <td>{row.wins}</td>
-                  <td>{row.losses}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+        {teamPanel === 'seasonStandings' ? (
+          <>
+            {stsLoading ? <div className="hc-api-msg">Loading…</div> : null}
+            {!stsLoading && !stsErr && standingsSeason?.length ? (
+              <table style={{ marginTop: 12 }}>
+                <thead>
+                  <tr>
+                    <th>Season</th>
+                    <th>W</th>
+                    <th>L</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {standingsSeason.map((row) => (
+                    <tr key={`${row.id}-${row.season}`}>
+                      <td>{row.season}</td>
+                      <td>{row.wins}</td>
+                      <td>{row.losses}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : null}
+            {!stsLoading && !stsErr && Array.isArray(standingsSeason) && standingsSeason.length === 0 ? (
+              <p className="hc-muted" style={{ marginTop: 12 }}>
+                No standings rows for this team and season.
+              </p>
+            ) : null}
+          </>
         ) : null}
       </div>
 
