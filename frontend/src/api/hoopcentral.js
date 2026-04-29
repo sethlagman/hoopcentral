@@ -67,6 +67,11 @@ export function fetchTeamRoster(teamId) {
   return apiJson(`/team/${encodeURIComponent(teamId)}/roster`)
 }
 
+/** Roster for ``teamId`` with statistics in ``season`` (e.g. ``2025`` or ``2025-26``). */
+export function fetchTeamRosterSeason(teamId, season) {
+  return apiJson(`/team/${encodeURIComponent(teamId)}/roster/${encodeURIComponent(season)}`)
+}
+
 /** Latest-season roster (players on team with stats for the newest stored season) */
 export function fetchTeamCurrentRoster(teamId) {
   return apiJson(`/team/${encodeURIComponent(teamId)}/roster/current`)
