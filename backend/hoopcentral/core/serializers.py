@@ -16,9 +16,19 @@ class TeamSerializer(serializers.ModelSerializer):
 
 
 class StatisticSerializer(serializers.ModelSerializer):
+    player_name = serializers.CharField(source="player.full_name", read_only=True)
+
     class Meta:
         model = Statistic
-        fields = '__all__'
+        fields = (
+            "id",
+            "player",
+            "player_name",
+            "season",
+            "ppg",
+            "rpg",
+            "apg",
+        )
 
 
 class StandingSerializer(serializers.ModelSerializer):
