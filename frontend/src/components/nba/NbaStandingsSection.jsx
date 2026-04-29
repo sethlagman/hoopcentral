@@ -45,7 +45,10 @@ function ConferenceStandingsBlock({ title, rows }) {
             <th>Team</th>
             <th>W</th>
             <th>L</th>
+            <th>Road</th>
             <th>PCT</th>
+            <th>Last 10</th>
+            <th>Overtime</th>
           </tr>
         </thead>
         <tbody>
@@ -57,7 +60,10 @@ function ConferenceStandingsBlock({ title, rows }) {
               <td>{row.team_name ?? row.team}</td>
               <td>{row.wins}</td>
               <td>{row.losses}</td>
+              <td>{row.road}</td>
               <td className="stat-hi">{row.winrate}</td>
+              <td>{row.last10}</td>
+              <td>{row.overtime}</td>
             </tr>
           ))}
         </tbody>
@@ -200,6 +206,10 @@ export default function NbaStandingsSection({ activeId }) {
                       <th>Season</th>
                       <th>W</th>
                       <th>L</th>
+                      <th>Road</th>
+                      <th>PCT</th>
+                      <th>Last 10</th>
+                      <th>Overtime</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -209,6 +219,10 @@ export default function NbaStandingsSection({ activeId }) {
                         <td>{row.season}</td>
                         <td>{row.wins}</td>
                         <td>{row.losses}</td>
+                        <td>{row.road}</td>
+                        <td className="stat-hi">{row.winrate}</td>
+                        <td>{row.last10}</td>
+                        <td>{row.overtime}</td>
                       </tr>
                     ))}
                   </tbody>
