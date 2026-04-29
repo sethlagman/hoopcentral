@@ -2,10 +2,24 @@ from rest_framework import serializers
 from .models import Player, Team, Statistic, Standing
 
 class PlayerSerializer(serializers.ModelSerializer):
-    
+
+    team_name = serializers.CharField(source='team.full_name', read_only=True, allow_null=True)
+
     class Meta:
         model = Player
-        fields = '__all__'
+        fields = (
+            'player_id',
+            'full_name',
+            'last_name',
+            'first_name',
+            'team',
+            'team_name',
+            'jersey',
+            'is_active',
+            'headshot',
+            'year_start',
+            'year_end',
+        )
 
 
 class TeamSerializer(serializers.ModelSerializer):
