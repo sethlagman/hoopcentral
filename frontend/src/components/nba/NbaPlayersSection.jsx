@@ -102,9 +102,7 @@ export default function NbaPlayersSection({ activeId }) {
                         <div className="pavatar">🏀</div>
                         <div>
                           <div className="pname">{p.full_name}</div>
-                          <div className="pteam">
-                            {p.first_name} {p.last_name}
-                          </div>
+                          <div className="pteam">{p.team_name}</div>
                         </div>
                       </div>
                     </td>
@@ -167,6 +165,7 @@ export default function NbaPlayersSection({ activeId }) {
                       <div className="pavatar">🏀</div>
                       <div>
                         <div className="pname">{p.full_name}</div>
+                        <div className="pteam">{p.team_name}</div>
                       </div>
                     </div>
                   </td>
