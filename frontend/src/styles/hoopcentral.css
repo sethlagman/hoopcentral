@@ -817,10 +817,23 @@ tbody td:first-child {
   color: #111;
 }
 
+tbody td:has(.pcell) {
+  text-align: left;
+}
+
 .pcell {
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* Override tbody td:nth-child center so player name + team stack align */
+.pcell > div:last-child {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
 }
 
 .pavatar {
@@ -840,11 +853,13 @@ tbody td:first-child {
   font-size: 13px;
   font-weight: 700;
   color: #111;
+  text-align: left;
 }
 
 .pteam {
   font-size: 11px;
   color: #aaa;
+  text-align: left;
 }
 
 .stat-hi {
