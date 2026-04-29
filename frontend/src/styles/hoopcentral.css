@@ -849,6 +849,18 @@ tbody td:has(.pcell) {
   border: 1px solid #ddd;
 }
 
+.pavatar:has(img) {
+  overflow: hidden;
+  padding: 0;
+}
+
+.pavatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .pname {
   font-size: 13px;
   font-weight: 700;

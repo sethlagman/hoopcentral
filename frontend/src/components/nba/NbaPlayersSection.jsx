@@ -6,6 +6,14 @@ import { ApiState, HcToolbar } from './ApiUi.jsx'
 
 /* eslint-disable react-hooks/set-state-in-effect -- loading flags before async fetch */
 
+function PlayerAvatar({ headshot }) {
+  return (
+    <div className="pavatar">
+        <img src={headshot} alt="" className="pavatar-img" loading="lazy" />
+    </div>
+  )
+}
+
 export default function NbaPlayersSection({ activeId }) {
   const visible = activeId === 'nba-players'
   const [page, setPage] = useState(1)
@@ -99,7 +107,7 @@ export default function NbaPlayersSection({ activeId }) {
                     <td className="rank-muted">{p.player_id}</td>
                     <td>
                       <div className="pcell">
-                        <div className="pavatar">🏀</div>
+                        <PlayerAvatar headshot={p.headshot} />
                         <div>
                           <div className="pname">{p.full_name}</div>
                           <div className="pteam">{p.team_name}</div>
@@ -162,7 +170,7 @@ export default function NbaPlayersSection({ activeId }) {
                   <td className="rank-muted">{(page - 1) * 20 + i + 1}</td>
                   <td>
                     <div className="pcell">
-                      <div className="pavatar">🏀</div>
+                      <PlayerAvatar headshot={p.headshot} />
                       <div>
                         <div className="pname">{p.full_name}</div>
                         <div className="pteam">{p.team_name}</div>
