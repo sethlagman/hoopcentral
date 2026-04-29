@@ -28,6 +28,21 @@ export function fetchPlayerList(page = 1, pageSize = 20) {
   return apiJson(`/player?${q}`)
 }
 
+/** Default page size for bulk Statistic / Standing index endpoints (`page`, `page_size`) */
+export const BULK_INDEX_PAGE_SIZE = 40
+
+/** Paginated statistic index (`/statistic`) */
+export function fetchStatisticList(page = 1, pageSize = BULK_INDEX_PAGE_SIZE) {
+  const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  return apiJson(`/statistic?${q}`)
+}
+
+/** Paginated standings index (`/standing`) */
+export function fetchStandingList(page = 1, pageSize = BULK_INDEX_PAGE_SIZE) {
+  const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  return apiJson(`/standing?${q}`)
+}
+
 export function fetchPlayer(playerId) {
   return apiJson(`/player/${encodeURIComponent(playerId)}`)
 }
@@ -52,20 +67,12 @@ export function fetchTeamRoster(teamId) {
   return apiJson(`/team/${encodeURIComponent(teamId)}/roster`)
 }
 
-export function fetchStandingList() {
-  return apiJson('/standing')
-}
-
 export function fetchTeamStandings(teamId) {
   return apiJson(`/standing/${encodeURIComponent(teamId)}`)
 }
 
 export function fetchTeamStandingsSeason(teamId, season) {
   return apiJson(`/standing/${encodeURIComponent(teamId)}/${encodeURIComponent(season)}`)
-}
-
-export function fetchStatisticList() {
-  return apiJson('/statistic')
 }
 
 export function fetchPlayerStatistics(playerId) {

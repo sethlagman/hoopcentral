@@ -11,8 +11,9 @@ import {
   fetchTeamRoster,
   fetchTeamStandings,
   fetchTeamStandingsSeason,
+  BULK_INDEX_PAGE_SIZE,
 } from '../../api/hoopcentral.js'
-import { ApiState } from './ApiUi.jsx'
+import { ApiState, HcToolbar } from './ApiUi.jsx'
 
 export default function NbaPlayerStatsSection({ activeId }) {
   const visible = activeId === 'nba-player-stats'
@@ -48,6 +49,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
   const [stsErr, setStsErr] = useState(null)
 
   const [bulk, setBulk] = useState(null)
+  const [bulkPage, setBulkPage] = useState(1)
   const [bLoading, setBLoading] = useState(false)
   const [bErr, setBErr] = useState(null)
 
@@ -124,15 +126,23 @@ export default function NbaPlayerStatsSection({ activeId }) {
       .finally(() => setStsLoading(false))
   }
 
-  const loadStatDump = (e) => {
-    e.preventDefault()
+  const fetchStatisticBulkPage = (page) => {
     setBLoading(true)
     setBErr(null)
-    fetchStatisticList()
-      .then((rows) => setBulk(Array.isArray(rows) ? rows.slice(0, 80) : rows))
+    fetchStatisticList(page, BULK_INDEX_PAGE_SIZE)
+      .then((data) => {
+        setBulk(data)
+        setBulkPage(page)
+      })
       .catch((err) => setBErr(err.message || String(err)))
       .finally(() => setBLoading(false))
   }
+
+  const statBulkRows = bulk?.results ?? []
+  const statBulkTotal = bulk?.count ?? 0
+  const statBulkTotalPages = Math.max(1, Math.ceil(statBulkTotal / BULK_INDEX_PAGE_SIZE))
+  const statBulkHasNext = Boolean(bulk?.next)
+  const statBulkHasPrev = Boolean(bulk?.previous)
 
   if (!visible) return null
 
@@ -390,34 +400,68 @@ export default function NbaPlayerStatsSection({ activeId }) {
         <summary className="hc-advanced-summary">League-wide stat sample (bulk index)</summary>
         <div className="table-wrap hc-advanced-inner">
           <p className="hc-muted" style={{ marginBottom: 10 }}>
-            Optional: load a wider cross-section than a single-player lookup. It is a heavier request—
-            preview only.
+            Loads one page of league stat rows at a time. Pagination matches the player directory (page
+            and page size; default {BULK_INDEX_PAGE_SIZE} rows per request).
           </p>
-          <button type="button" className="hc-btn hc-btn-ghost" onClick={loadStatDump} disabled={bLoading}>
-            {bLoading ? 'Loading…' : 'Load preview (80 rows)'}
+          <button
+            type="button"
+            className="hc-btn hc-btn-ghost"
+            onClick={() => fetchStatisticBulkPage(1)}
+            disabled={bLoading}
+          >
+            {bLoading ? 'Loading…' : bulk ? 'Reload page 1' : 'Load preview'}
           </button>
           {bErr ? <div className="hc-api-msg hc-api-err">{bErr}</div> : null}
-          {bulk?.length ? (
-            <table style={{ marginTop: 12 }}>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Season</th>
-                  <th>Player</th>
-                  <th>PPG</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bulk.map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.id}</td>
-                    <td>{row.season}</td>
-                    <td>{row.player}</td>
-                    <td>{row.ppg ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {bulk ? (
+            <>
+              <HcToolbar>
+                <span className="hc-toolbar-meta">
+                  Page {bulkPage} of {statBulkTotalPages} · {statBulkTotal} rows
+                </span>
+                <button
+                  type="button"
+                  className="hc-btn hc-btn-ghost"
+                  disabled={bLoading || !statBulkHasPrev}
+                  onClick={() => fetchStatisticBulkPage(bulkPage - 1)}
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  className="hc-btn hc-btn-ghost"
+                  disabled={bLoading || !statBulkHasNext}
+                  onClick={() => fetchStatisticBulkPage(bulkPage + 1)}
+                >
+                  Next
+                </button>
+              </HcToolbar>
+              {statBulkRows.length ? (
+                <table style={{ marginTop: 12 }}>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Season</th>
+                      <th>Player</th>
+                      <th>PPG</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statBulkRows.map((row) => (
+                      <tr key={row.id}>
+                        <td>{row.id}</td>
+                        <td>{row.season}</td>
+                        <td>{row.player}</td>
+                        <td>{row.ppg ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="hc-muted" style={{ marginTop: 10 }}>
+                  No statistic rows match this slice.
+                </p>
+              )}
+            </>
           ) : null}
         </div>
       </details>

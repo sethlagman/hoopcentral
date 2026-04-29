@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import SectionHeader from '../SectionHeader'
 import SubPanel from '../SubPanel'
 import { DEFAULT_NBA_SEASON } from '../../config/api.js'
-import { fetchSeasonSummary, fetchStandingList } from '../../api/hoopcentral.js'
+import { fetchSeasonSummary, fetchStandingList, BULK_INDEX_PAGE_SIZE } from '../../api/hoopcentral.js'
 import { ApiState, HcToolbar } from './ApiUi.jsx'
 
 /* eslint-disable react-hooks/set-state-in-effect -- loading flags before async fetch */
@@ -14,7 +14,8 @@ export default function NbaStandingsSection({ activeId }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const [bulk, setBulk] = useState(null)
+  const [standingBulk, setStandingBulk] = useState(null)
+  const [standingBulkPage, setStandingBulkPage] = useState(1)
   const [bLoading, setBLoading] = useState(false)
   const [bErr, setBErr] = useState(null)
 
@@ -38,15 +39,23 @@ export default function NbaStandingsSection({ activeId }) {
     }
   }, [visible, season])
 
-  const loadBulk = (e) => {
-    e.preventDefault()
+  const fetchStandingBulkPage = (page) => {
     setBLoading(true)
     setBErr(null)
-    fetchStandingList()
-      .then((rows) => setBulk(Array.isArray(rows) ? rows.slice(0, 120) : rows))
+    fetchStandingList(page, BULK_INDEX_PAGE_SIZE)
+      .then((data) => {
+        setStandingBulk(data)
+        setStandingBulkPage(page)
+      })
       .catch((e) => setBErr(e.message || String(e)))
       .finally(() => setBLoading(false))
   }
+
+  const standingBulkRows = standingBulk?.results ?? []
+  const standingBulkTotal = standingBulk?.count ?? 0
+  const standingBulkTotalPages = Math.max(1, Math.ceil(standingBulkTotal / BULK_INDEX_PAGE_SIZE))
+  const standingBulkHasNext = Boolean(standingBulk?.next)
+  const standingBulkHasPrev = Boolean(standingBulk?.previous)
 
   if (!visible) return null
 
@@ -93,42 +102,76 @@ export default function NbaStandingsSection({ activeId }) {
         </ApiState>
       </div>
 
-      <div className="table-wrap" style={{ marginTop: 16 }}>
-        <div className="table-head">
-          <div className="table-head-title">League standings snapshot</div>
-        </div>
-        <p className="hc-muted" style={{ padding: '0 16px', marginBottom: 8 }}>
-          Quick slice of league-wide standings (first 120 teams). Larger download—give it a second.
-        </p>
-        <div style={{ padding: '0 16px 12px' }}>
-          <button type="button" className="hc-btn hc-btn-ghost" onClick={loadBulk} disabled={bLoading}>
-            {bLoading ? 'Loading…' : 'Load snapshot'}
+      <details className="hc-advanced-details" style={{ marginTop: 16 }}>
+        <summary className="hc-advanced-summary">League standings snapshot (bulk preview)</summary>
+        <div className="table-wrap hc-advanced-inner">
+          <p className="hc-muted" style={{ marginBottom: 10 }}>
+            League-wide standings index, paginated like the player directory (default{' '}
+            {BULK_INDEX_PAGE_SIZE} rows per request). Heavier than the conference table above on first
+            load.
+          </p>
+          <button
+            type="button"
+            className="hc-btn hc-btn-ghost"
+            onClick={() => fetchStandingBulkPage(1)}
+            disabled={bLoading}
+          >
+            {bLoading ? 'Loading…' : standingBulk ? 'Reload page 1' : 'Load snapshot'}
           </button>
+          {bErr ? <div className="hc-api-msg hc-api-err">{bErr}</div> : null}
+          {standingBulk ? (
+            <>
+              <HcToolbar>
+                <span className="hc-toolbar-meta">
+                  Page {standingBulkPage} of {standingBulkTotalPages} · {standingBulkTotal} rows
+                </span>
+                <button
+                  type="button"
+                  className="hc-btn hc-btn-ghost"
+                  disabled={bLoading || !standingBulkHasPrev}
+                  onClick={() => fetchStandingBulkPage(standingBulkPage - 1)}
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  className="hc-btn hc-btn-ghost"
+                  disabled={bLoading || !standingBulkHasNext}
+                  onClick={() => fetchStandingBulkPage(standingBulkPage + 1)}
+                >
+                  Next
+                </button>
+              </HcToolbar>
+              {standingBulkRows.length ? (
+                <table style={{ marginTop: 12 }}>
+                  <thead>
+                    <tr>
+                      <th>Team</th>
+                      <th>Season</th>
+                      <th>W</th>
+                      <th>L</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {standingBulkRows.map((row) => (
+                      <tr key={row.id}>
+                        <td>{row.team_name ?? row.team}</td>
+                        <td>{row.season}</td>
+                        <td>{row.wins}</td>
+                        <td>{row.losses}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="hc-muted" style={{ marginTop: 10 }}>
+                  No standing rows on this page.
+                </p>
+              )}
+            </>
+          ) : null}
         </div>
-        {bErr ? <div className="hc-api-msg hc-api-err">{bErr}</div> : null}
-        {bulk?.length ? (
-          <table style={{ marginTop: 12 }}>
-            <thead>
-              <tr>
-                <th>Team</th>
-                <th>Season</th>
-                <th>W</th>
-                <th>L</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bulk.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.team_name ?? row.team}</td>
-                  <td>{row.season}</td>
-                  <td>{row.wins}</td>
-                  <td>{row.losses}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
-      </div>
+      </details>
     </SubPanel>
   )
 }
