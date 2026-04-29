@@ -9,6 +9,7 @@ import {
   fetchPlayerStatisticsSeason,
   fetchStatisticList,
   fetchTeamRoster,
+  fetchTeamCurrentRoster,
   fetchTeamStandings,
   fetchTeamStandingsSeason,
   BULK_INDEX_PAGE_SIZE,
@@ -43,9 +44,13 @@ export default function NbaPlayerStatsSection({ activeId }) {
   const [cLoading, setCLoading] = useState(false)
   const [cErr, setCErr] = useState(null)
 
-  const [roster, setRoster] = useState(null)
-  const [rLoading, setRLoading] = useState(false)
-  const [rErr, setRErr] = useState(null)
+  const [historicalRoster, setHistoricalRoster] = useState(null)
+  const [historicalRLoading, setHistoricalRLoading] = useState(false)
+  const [historicalRErr, setHistoricalRErr] = useState(null)
+
+  const [currentRoster, setCurrentRoster] = useState(null)
+  const [currentRLoading, setCurrentRLoading] = useState(false)
+  const [currentRErr, setCurrentRErr] = useState(null)
 
   const [standings, setStandings] = useState(null)
   const [stLoading, setStLoading] = useState(false)
@@ -54,8 +59,8 @@ export default function NbaPlayerStatsSection({ activeId }) {
   const [standingsSeason, setStandingsSeason] = useState(null)
   const [stsLoading, setStsLoading] = useState(false)
   const [stsErr, setStsErr] = useState(null)
-  /** Roster vs standings views are mutually exclusive in the UI */
-  const [teamPanel, setTeamPanel] = useState(null) // 'roster' | 'fullStandings' | 'seasonStandings'
+  /** Roster / standings sub-panels shown one at a time */
+  const [teamPanel, setTeamPanel] = useState(null) // 'historicalRoster' | 'currentRoster' | 'fullStandings' | 'seasonStandings'
 
   const [bulk, setBulk] = useState(null)
   const [bulkPage, setBulkPage] = useState(1)
@@ -102,16 +107,28 @@ export default function NbaPlayerStatsSection({ activeId }) {
       .finally(() => setCLoading(false))
   }
 
-  const loadRoster = (e) => {
+  const loadHistoricalRoster = (e) => {
     e.preventDefault()
     if (!teamId.trim()) return
-    setTeamPanel('roster')
-    setRLoading(true)
-    setRErr(null)
+    setTeamPanel('historicalRoster')
+    setHistoricalRLoading(true)
+    setHistoricalRErr(null)
     fetchTeamRoster(teamId.trim())
-      .then(setRoster)
-      .catch((err) => setRErr(err.message || String(err)))
-      .finally(() => setRLoading(false))
+      .then(setHistoricalRoster)
+      .catch((err) => setHistoricalRErr(err.message || String(err)))
+      .finally(() => setHistoricalRLoading(false))
+  }
+
+  const loadCurrentRoster = (e) => {
+    e.preventDefault()
+    if (!teamId.trim()) return
+    setTeamPanel('currentRoster')
+    setCurrentRLoading(true)
+    setCurrentRErr(null)
+    fetchTeamCurrentRoster(teamId.trim())
+      .then(setCurrentRoster)
+      .catch((err) => setCurrentRErr(err.message || String(err)))
+      .finally(() => setCurrentRLoading(false))
   }
 
   const loadTeamStandings = (e) => {
@@ -313,7 +330,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
         ) : null}
       </div>
 
-      <div className="table-wrap" style={{ marginTop: 16 }}>
+      <div className="table-wrap">
         <div className="table-head">
           <div className="table-head-title">Roster & team record</div>
         </div>
@@ -328,13 +345,24 @@ export default function NbaPlayerStatsSection({ activeId }) {
           <button
             type="button"
             className={
-              teamPanel === null || teamPanel === 'roster' ? 'hc-btn' : 'hc-btn hc-btn-ghost'
+              teamPanel === null || teamPanel === 'historicalRoster'
+                ? 'hc-btn'
+                : 'hc-btn hc-btn-ghost'
             }
-            aria-pressed={teamPanel === null || teamPanel === 'roster'}
-            onClick={loadRoster}
-            disabled={rLoading}
+            aria-pressed={teamPanel === null || teamPanel === 'historicalRoster'}
+            onClick={loadHistoricalRoster}
+            disabled={historicalRLoading}
           >
-            {rLoading ? '…' : 'Roster'}
+            {historicalRLoading ? '…' : 'Historical roster'}
+          </button>
+          <button
+            type="button"
+            className={teamPanel === 'currentRoster' ? 'hc-btn' : 'hc-btn hc-btn-ghost'}
+            aria-pressed={teamPanel === 'currentRoster'}
+            onClick={loadCurrentRoster}
+            disabled={currentRLoading}
+          >
+            {currentRLoading ? '…' : 'Current roster'}
           </button>
           <button
             type="button"
@@ -347,9 +375,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
           </button>
           <button
             type="button"
-            className={
-              teamPanel === 'seasonStandings' ? 'hc-btn' : 'hc-btn hc-btn-ghost'
-            }
+            className={teamPanel === 'seasonStandings' ? 'hc-btn' : 'hc-btn hc-btn-ghost'}
             aria-pressed={teamPanel === 'seasonStandings'}
             onClick={loadTeamStandingsSeason}
             disabled={stsLoading}
@@ -357,8 +383,11 @@ export default function NbaPlayerStatsSection({ activeId }) {
             {stsLoading ? '…' : 'This season'}
           </button>
         </form>
-        {rErr && teamPanel === 'roster' ? (
-          <div className="hc-api-msg hc-api-err">{rErr}</div>
+        {historicalRErr && teamPanel === 'historicalRoster' ? (
+          <div className="hc-api-msg hc-api-err">{historicalRErr}</div>
+        ) : null}
+        {currentRErr && teamPanel === 'currentRoster' ? (
+          <div className="hc-api-msg hc-api-err">{currentRErr}</div>
         ) : null}
         {stErr && teamPanel === 'fullStandings' ? (
           <div className="hc-api-msg hc-api-err">{stErr}</div>
@@ -367,12 +396,14 @@ export default function NbaPlayerStatsSection({ activeId }) {
           <div className="hc-api-msg hc-api-err">{stsErr}</div>
         ) : null}
 
-        {teamPanel === 'roster' ? (
+        {teamPanel === 'historicalRoster' ? (
           <>
-            {rLoading ? <div className="hc-api-msg">Loading…</div> : null}
-            {!rLoading && !rErr && roster ? (
-              <div style={{ marginTop: 12 }}>
-                <div className="hc-muted">Roster size: {roster.roster_size}</div>
+            {historicalRLoading ? <div className="hc-api-msg">Loading…</div> : null}
+            {!historicalRLoading && !historicalRErr && historicalRoster ? (
+              <div>
+                <div className="hc-muted">
+                  Roster size: {historicalRoster.roster_size ?? '—'}
+                </div>
                 <table>
                   <thead>
                     <tr>
@@ -381,7 +412,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {(roster.roster || []).map((p) => (
+                    {(historicalRoster.roster || []).map((p) => (
                       <tr key={p.player_id}>
                         <td>{p.full_name}</td>
                         <td>{p.player_id}</td>
@@ -394,11 +425,54 @@ export default function NbaPlayerStatsSection({ activeId }) {
           </>
         ) : null}
 
+        {teamPanel === 'currentRoster' ? (
+          <>
+            {currentRLoading ? <div className="hc-api-msg">Loading…</div> : null}
+            {!currentRLoading && !currentRErr && currentRoster ? (
+              <div>
+                {currentRoster.season == null ? (
+                  <p className="hc-muted">
+                    No league season data yet—can’t resolve a current roster season.
+                  </p>
+                ) : (
+                  <>
+                    <div className="hc-muted">
+                      Latest season: {currentRoster.season} · {currentRoster.roster_size ?? 0} players
+                    </div>
+                    {(currentRoster.roster || []).length ? (
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Player</th>
+                            <th>ID</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(currentRoster.roster || []).map((p) => (
+                            <tr key={p.player_id}>
+                              <td>{p.full_name}</td>
+                              <td>{p.player_id}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className="hc-muted">
+                        No players on this roster with statistics for that season yet.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+
         {teamPanel === 'fullStandings' ? (
           <>
             {stLoading ? <div className="hc-api-msg">Loading…</div> : null}
             {!stLoading && !stErr && standings?.length ? (
-              <table style={{ marginTop: 12 }}>
+              <table>
                 <thead>
                   <tr>
                     <th>Season</th>
@@ -420,9 +494,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
               </table>
             ) : null}
             {!stLoading && !stErr && Array.isArray(standings) && standings.length === 0 ? (
-              <p className="hc-muted" style={{ marginTop: 12 }}>
-                No standings rows for this team.
-              </p>
+              <p className="hc-muted">No standings rows for this team.</p>
             ) : null}
           </>
         ) : null}
@@ -431,7 +503,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
           <>
             {stsLoading ? <div className="hc-api-msg">Loading…</div> : null}
             {!stsLoading && !stsErr && standingsSeason?.length ? (
-              <table style={{ marginTop: 12 }}>
+              <table>
                 <thead>
                   <tr>
                     <th>Season</th>
@@ -451,9 +523,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
               </table>
             ) : null}
             {!stsLoading && !stsErr && Array.isArray(standingsSeason) && standingsSeason.length === 0 ? (
-              <p className="hc-muted" style={{ marginTop: 12 }}>
-                No standings rows for this team and season.
-              </p>
+              <p className="hc-muted">No standings rows for this team and season.</p>
             ) : null}
           </>
         ) : null}
