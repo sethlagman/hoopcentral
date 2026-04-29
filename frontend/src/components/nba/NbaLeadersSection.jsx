@@ -89,11 +89,12 @@ export default function NbaLeadersSection({ activeId }) {
           error={error}
           empty={!loading && !error && rows.length === 0}
         >
-          <table>
+            <table>
             <thead>
               <tr>
                 <th>Rank</th>
-                <th>Player #</th>
+                <th>Player</th>
+                <th>ID</th>
                 <th>Season</th>
                 <th>{statLabel}</th>
               </tr>
@@ -102,7 +103,10 @@ export default function NbaLeadersSection({ activeId }) {
               {rows.map((r, i) => (
                 <tr key={r.id}>
                   <td className="rank-muted">{i + 1}</td>
-                  <td>{r.player}</td>
+                  <td>
+                    <span className="pname">{r.player_name ?? '—'}</span>
+                  </td>
+                  <td className="rank-muted">{r.player}</td>
                   <td>{r.season}</td>
                   <td className="stat-hi">{r[statKey] ?? '—'}</td>
                 </tr>
