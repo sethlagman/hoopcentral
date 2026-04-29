@@ -7,6 +7,65 @@ import { ApiState, HcToolbar } from './ApiUi.jsx'
 
 /* eslint-disable react-hooks/set-state-in-effect -- loading flags before async fetch */
 
+/** NBA ingestion stores conference as ``East`` / ``West`` (sometimes Eastern / Western). */
+function partitionStandingsByConference(rows) {
+  const east = []
+  const west = []
+  const other = []
+  for (const row of rows) {
+    const n = String(row.conference ?? '')
+      .trim()
+      .toLowerCase()
+    if (n === 'west' || n === 'western') west.push(row)
+    else if (n === 'east' || n === 'eastern') east.push(row)
+    else other.push(row)
+  }
+  const byWinsThenLosses = (a, b) => {
+    const dw = (b.wins ?? 0) - (a.wins ?? 0)
+    if (dw !== 0) return dw
+    return (a.losses ?? 0) - (b.losses ?? 0)
+  }
+  east.sort(byWinsThenLosses)
+  west.sort(byWinsThenLosses)
+  other.sort(byWinsThenLosses)
+  return { east, west, other }
+}
+
+function ConferenceStandingsBlock({ title, rows }) {
+  if (!rows.length) return null
+  return (
+    <div className="table-wrap">
+      <div className="table-head">
+        <div className="table-head-title">{title}</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Team</th>
+            <th>W</th>
+            <th>L</th>
+            <th>PCT</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, idx) => (
+            <tr key={row.id ?? `${row.team}-${row.season}-${idx}`}>
+              <td>
+                <span className="seed-badge">{idx + 1}</span>
+              </td>
+              <td>{row.team_name ?? row.team}</td>
+              <td>{row.wins}</td>
+              <td>{row.losses}</td>
+              <td className="stat-hi">{row.winrate}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function NbaStandingsSection({ activeId }) {
   const visible = activeId === 'nba-team-stats'
   const [season, setSeason] = useState(DEFAULT_NBA_SEASON)
@@ -60,6 +119,8 @@ export default function NbaStandingsSection({ activeId }) {
   if (!visible) return null
 
   const standings = data?.standings ?? []
+  const { east, west, other } = partitionStandingsByConference(standings)
+  const hasAnyConference = east.length > 0 || west.length > 0 || other.length > 0
 
   return (
     <SubPanel id="nba-team-stats" activeId={activeId}>
@@ -76,29 +137,18 @@ export default function NbaStandingsSection({ activeId }) {
             placeholder="Season (2000 or 2000-01)"
           />
         </HcToolbar>
-        <ApiState loading={loading} error={error} empty={!loading && !error && standings.length === 0}>
-          <table>
-            <thead>
-              <tr>
-                <th>Team</th>
-                <th>Conf</th>
-                <th>W</th>
-                <th>L</th>
-                <th>PCT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((row) => (
-                <tr key={`${row.id}-${row.season}`}>
-                  <td>{row.team_name ?? row.team}</td>
-                  <td>{row.conference}</td>
-                  <td>{row.wins}</td>
-                  <td>{row.losses}</td>
-                  <td className="stat-hi">{row.winrate}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <ApiState
+          loading={loading}
+          error={error}
+          empty={!loading && !error && standings.length === 0}
+        >
+          {hasAnyConference ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <ConferenceStandingsBlock title="Eastern Conference" rows={east} />
+              <ConferenceStandingsBlock title="Western Conference" rows={west} />
+              <ConferenceStandingsBlock title="Other" rows={other} />
+            </div>
+          ) : null}
         </ApiState>
       </div>
 
