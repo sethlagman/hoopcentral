@@ -1,3 +1,5 @@
+import os
+
 from django.db.models import Avg, IntegerField, Q
 from django.db.models.functions import Cast
 from django.http import Http404
@@ -13,6 +15,9 @@ from .serializers import (
     StatisticSerializer,
     TeamSerializer,
 )
+
+SEASON = (os.environ.get("SEASON") or "2025-26").strip()
+
 
 class StandardPagination(PageNumberPagination):
     page_size = 20
@@ -99,6 +104,29 @@ def _stat_avg_one_decimal(val):
     if val is None:
         return None
     return round(float(val), 1)
+
+
+def _players_active_in_league_year(players_queryset, league_year):
+    """
+    Players whose career [year_start, year_end] includes the NBA league start year
+    (e.g. 2025 for season key 2025-26). Non-numeric career years are excluded.
+    """
+    if league_year is None:
+        return players_queryset
+    return (
+        players_queryset.filter(
+            year_start__regex=r"^[0-9]+$",
+            year_end__regex=r"^[0-9]+$",
+        )
+        .annotate(
+            _career_start=Cast("year_start", output_field=IntegerField()),
+            _career_end=Cast("year_end", output_field=IntegerField()),
+        )
+        .filter(
+            _career_start__lte=league_year,
+            _career_end__gte=league_year,
+        )
+    )
 
 
 def _statistics_players_active_in_season(queryset, season_y):
@@ -373,10 +401,44 @@ def player_career_summary(request, player_id):
 
 
 @api_view(["GET"])
+def team_roster_current(request, team_id):
+    """
+    Current roster for `SEASON` (from `.env` `SEASON`, same as ingestion scripts): players
+    assigned to the team with a stat line for that season whose career years still include
+    that league year.
+    """
+    tid = str(team_id)
+    team = Team.objects.filter(team_id=tid).first()
+
+    season_key = SEASON
+    variants = list(dict.fromkeys(_season_lookup_variants(season_key)))
+    league_y = _resolve_season_start_year(season_key, variants)
+
+    players_qs = (
+        Player.objects.filter(team_id=tid)
+        .filter(statistics__season__in=variants)
+        .select_related("team")
+        .distinct()
+    )
+    players_qs = _players_active_in_league_year(players_qs, league_y).order_by("full_name")
+
+    serializer = PlayerSerializer(players_qs, many=True)
+    return Response(
+        {
+            "team": TeamSerializer(team).data if team is not None else None,
+            "season": season_key,
+            "roster": serializer.data,
+            "roster_size": players_qs.count(),
+        }
+    )
+
+
+@api_view(["GET"])
 def team_roster(request, team_id):
-    """Get all players currently on a team. Unknown team_id returns 200 with an empty roster."""
-    team = Team.objects.filter(team_id=team_id).first()
-    players = Player.objects.filter(team_id=team_id)
+    """Historical roster: all players currently assigned (`Player.team_id`) to this franchise."""
+    tid = str(team_id)
+    team = Team.objects.filter(team_id=tid).first()
+    players = Player.objects.filter(team_id=tid).select_related("team").order_by("full_name")
     return Response(
         {
             "team": TeamSerializer(team).data if team is not None else None,

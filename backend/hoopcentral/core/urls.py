@@ -15,6 +15,7 @@ from .views import (
     team_id,
     team_list,
     team_roster,
+    team_roster_current,
     team_standing,
     team_standing_season,
 )
@@ -61,6 +62,7 @@ urlpatterns = [
         player_career_summary,
         name="player_career_summary",
     ),
+    path("team/<int:team_id>/roster/current", team_roster_current, name="team_roster_current"),
     path("team/<int:team_id>/roster", team_roster, name="team_roster"),
     path("season/<str:season>/summary", season_summary, name="season_summary"),
 ]
