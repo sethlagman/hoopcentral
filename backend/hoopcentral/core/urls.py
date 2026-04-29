@@ -28,17 +28,17 @@ urlpatterns = [
     path("statistic", statistic_list, name="statistic"),
 
     # IDs and detail
-    path("player/<int:player_id>", player_id, name="player_id"),
-    path("team/<int:team_id>", team_id, name="team_id"),
-    path("statistic/<int:player_id>", player_statistic, name="player_statistic"),
-    path("standing/<int:team_id>", team_standing, name="team_standing"),
+    path("player/<str:player_id>", player_id, name="player_id"),
+    path("team/<str:team_id>", team_id, name="team_id"),
+    path("statistic/<str:player_id>", player_statistic, name="player_statistic"),
+    path("standing/<str:team_id>", team_standing, name="team_standing"),
     path(
-        "statistic/<int:player_id>/<str:season>",
+        "statistic/<str:player_id>/<str:season>",
         player_statistic_season,
         name="player_statistic_season",
     ),
     path(
-        "standing/<int:team_id>/<str:season>",
+        "standing/<str:team_id>/<str:season>",
         team_standing_season,
         name="team_standing_season",
     ),
@@ -53,16 +53,16 @@ urlpatterns = [
     
     # Comparison and summary
     path(
-        "team/compare/<int:team_id_1>/<int:team_id_2>/<str:season>",
+        "team/compare/<str:team_id_1>/<str:team_id_2>/<str:season>",
         team_compare,
         name="team_compare",
     ),
     path(
-        "player/<int:player_id>/career-summary",
+        "player/<str:player_id>/career-summary",
         player_career_summary,
         name="player_career_summary",
     ),
-    path("team/<int:team_id>/roster/current", team_roster_current, name="team_roster_current"),
-    path("team/<int:team_id>/roster", team_roster, name="team_roster"),
+    path("team/<str:team_id>/roster/current", team_roster_current, name="team_roster_current"),
+    path("team/<str:team_id>/roster", team_roster, name="team_roster"),
     path("season/<str:season>/summary", season_summary, name="season_summary"),
 ]
