@@ -397,7 +397,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
       </div>
 
       <details className="hc-advanced-details" style={{ marginTop: 16 }}>
-        <summary className="hc-advanced-summary">League-wide stat sample (bulk index)</summary>
+        <summary className="hc-advanced-summary">League Statistics Snapshot</summary>
         <div className="table-wrap hc-advanced-inner">
           <p className="hc-muted" style={{ marginBottom: 10 }}>
             Loads one page of league stat rows at a time. Pagination matches the player directory (page

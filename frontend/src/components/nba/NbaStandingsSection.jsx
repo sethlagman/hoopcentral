@@ -103,7 +103,7 @@ export default function NbaStandingsSection({ activeId }) {
       </div>
 
       <details className="hc-advanced-details" style={{ marginTop: 16 }}>
-        <summary className="hc-advanced-summary">League standings snapshot (bulk preview)</summary>
+        <summary className="hc-advanced-summary">League Standings Snapshot</summary>
         <div className="table-wrap hc-advanced-inner">
           <p className="hc-muted" style={{ marginBottom: 10 }}>
             League-wide standings index, paginated like the player directory (default{' '}
