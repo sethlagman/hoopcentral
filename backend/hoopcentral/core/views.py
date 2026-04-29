@@ -159,7 +159,7 @@ def _standing_for_team_season_or_404(team_id, variants):
 def player_list(request):
     """Paginated list of all players (query params ``page``, ``page_size``)."""
 
-    players = Player.objects.all()
+    players = Player.objects.all().order_by("full_name", "player_id")
     return _paginated_response(request, players, PlayerSerializer)
 
 
