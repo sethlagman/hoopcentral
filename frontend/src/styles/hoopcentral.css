@@ -745,7 +745,6 @@ header {
   border: 1px solid #e0e0e0;
   border-radius: 3px;
   overflow: hidden;
-  margin-bottom: 20px;
 }
 
 .table-head {
@@ -903,10 +902,6 @@ tbody td:has(.pcell-trigger) {
 }
 
 /* NBA roster — inline player profile */
-.hc-player-profile-shell {
-  margin-bottom: 20px;
-}
-
 .hc-player-profile-card {
   margin-top: 8px;
 }

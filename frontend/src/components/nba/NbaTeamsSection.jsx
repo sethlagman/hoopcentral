@@ -146,7 +146,7 @@ export default function NbaTeamsSection({ activeId }) {
 
       {profileTeamId ? (
         <>
-          <div className="table-wrap hc-player-profile-shell">
+          <div className="table-wrap">
             <div className="table-head">
               <HcToolbar>
                 <button
@@ -206,31 +206,8 @@ export default function NbaTeamsSection({ activeId }) {
                 </button>
               </form>
               {rosterErr ? <div className="hc-api-msg hc-api-err">{rosterErr}</div> : null}
-              {!rosterLoading && !rosterErr && rosterData ? (
-                <>
-                  <p className="hc-muted" style={{ marginTop: 10 }}>
-                    Showing roster for season <strong>{rosterData.season}</strong> ·{' '}
-                    {rosterData.roster_size ?? rosterRows.length} players
-                  </p>
-                  {rosterData.roster_scope === 'active_only' ? (
-                    <p className="hc-muted" style={{ marginTop: 6, fontSize: 12 }}>
-                      Includes only players marked active — waived or inactive players are omitted even when
-                      listed career years still cover this season.
-                    </p>
-                  ) : rosterData.roster_scope === 'career_years' ? (
-                    <p className="hc-muted" style={{ marginTop: 6, fontSize: 12 }}>
-                      Players whose listed career years overlap this league season (historical view).
-                    </p>
-                  ) : null}
-                </>
-              ) : null}
-              {rosterLoading ? (
-                <div className="hc-api-msg" style={{ marginTop: 10 }}>
-                  Loading roster…
-                </div>
-              ) : null}
               {!rosterLoading && !rosterErr && rosterRows.length ? (
-                <table style={{ marginTop: 12 }}>
+                <table>
                   <thead>
                     <tr>
                       <th>Player</th>
@@ -260,13 +237,6 @@ export default function NbaTeamsSection({ activeId }) {
                     ))}
                   </tbody>
                 </table>
-              ) : null}
-              {!rosterLoading && !rosterErr && rosterData && rosterRows.length === 0 ? (
-                <p className="hc-muted" style={{ marginTop: 10 }}>
-                  {rosterData.roster_scope === 'active_only'
-                    ? 'No active players with statistics for this season yet.'
-                    : 'No players on this roster with statistics for that season yet.'}
-                </p>
               ) : null}
             </div>
           </div>

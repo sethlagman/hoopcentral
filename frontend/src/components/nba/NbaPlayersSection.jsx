@@ -190,18 +190,13 @@ export default function NbaPlayersSection({ activeId }) {
     return statsWithinCareerYearsSorted(profileStats, profilePlayer.year_start, profilePlayer.year_end)
   }, [profilePlayer, profileStats])
 
-  const hasProfileStatsRaw = Boolean(profileStats?.length)
-  const careerBounds =
-    parseCareerYear(profilePlayer?.year_start) != null &&
-    parseCareerYear(profilePlayer?.year_end) != null
-
   return (
     <SubPanel id="nba-players" activeId={activeId}>
       <SectionHeader title={profileTitle} />
 
       {profilePlayerId ? (
         <>
-          <div className="table-wrap hc-player-profile-shell">
+          <div className="table-wrap">
             <div className="table-head">
               <HcToolbar>
                 <button
@@ -264,40 +259,28 @@ export default function NbaPlayersSection({ activeId }) {
                   <div className="table-head" style={{ marginTop: 4 }}>
                     <div className="table-head-title">Season statistics</div>
                   </div>
-                  {hasProfileStatsRaw ? (
-                    profileStatsDisplay.length ? (
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Season</th>
-                            <th>PPG</th>
-                            <th>RPG</th>
-                            <th>APG</th>
+                  {profileStatsDisplay.length ? (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Season</th>
+                          <th>PPG</th>
+                          <th>RPG</th>
+                          <th>APG</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {profileStatsDisplay.map((s) => (
+                          <tr key={s.id}>
+                            <td>{s.season}</td>
+                            <td className="stat-hi">{s.ppg ?? '—'}</td>
+                            <td>{s.rpg ?? '—'}</td>
+                            <td>{s.apg ?? '—'}</td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {profileStatsDisplay.map((s) => (
-                            <tr key={s.id}>
-                              <td>{s.season}</td>
-                              <td className="stat-hi">{s.ppg ?? '—'}</td>
-                              <td>{s.rpg ?? '—'}</td>
-                              <td>{s.apg ?? '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <p className="hc-muted" style={{ marginTop: 10 }}>
-                        {careerBounds
-                          ? `No statistics fall within career years ${profilePlayer.year_start}–${profilePlayer.year_end}.`
-                          : 'No statistics could be matched to these career years.'}
-                      </p>
-                    )
-                  ) : (
-                    <p className="hc-muted" style={{ marginTop: 10 }}>
-                      No statistic rows for this player yet.
-                    </p>
-                  )}
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : null}
                 </>
               ) : null}
             </ApiState>
@@ -330,7 +313,7 @@ export default function NbaPlayersSection({ activeId }) {
             </form>
             {searchError ? <div className="hc-api-msg hc-api-err">{searchError}</div> : null}
             {searchRows ? (
-              <div style={{ marginTop: 12 }}>
+              <div>
                 <table>
                   <thead>
                     <tr>
