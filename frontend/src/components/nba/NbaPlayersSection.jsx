@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import SectionHeader from '../SectionHeader'
 import SubPanel from '../SubPanel'
 import {
@@ -9,6 +9,54 @@ import {
   fetchTeam,
 } from '../../api/hoopcentral.js'
 import { ApiState, HcToolbar } from './ApiUi.jsx'
+
+/** League start calendar year for a stored season label (matches backend ``season_utils.season_start_year``). */
+function seasonStartYear(season) {
+  if (season == null || season === '') return null
+  const s = String(season).trim()
+  const dash = s.indexOf('-')
+  if (dash !== -1) {
+    const head = s.slice(0, dash).trim()
+    return /^\d+$/.test(head) ? parseInt(head, 10) : null
+  }
+  if (/^\d{4,}$/.test(s)) return parseInt(s.slice(0, 4), 10)
+  return null
+}
+
+function parseCareerYear(v) {
+  if (v == null || String(v).trim() === '') return null
+  const n = parseInt(String(v).trim(), 10)
+  return Number.isFinite(n) ? n : null
+}
+
+/** Rows whose season league-year falls in ``[year_start, year_end]``; sorted latest season first. */
+function statsWithinCareerYearsSorted(stats, yearStart, yearEnd) {
+  const ymin = parseCareerYear(yearStart)
+  const ymax = parseCareerYear(yearEnd)
+  const restrict = ymin != null || ymax != null
+
+  let rows = [...(stats ?? [])]
+  if (restrict) {
+    rows = rows.filter((row) => {
+      const y = seasonStartYear(row.season)
+      if (y == null) return false
+      if (ymin != null && y < ymin) return false
+      if (ymax != null && y > ymax) return false
+      return true
+    })
+  }
+
+  rows.sort((a, b) => {
+    const ya = seasonStartYear(a.season)
+    const yb = seasonStartYear(b.season)
+    if (ya != null && yb != null && ya !== yb) return yb - ya
+    if (ya != null && yb == null) return -1
+    if (ya == null && yb != null) return 1
+    return String(b.season ?? '').localeCompare(String(a.season ?? ''), undefined, { numeric: true })
+  })
+
+  return rows
+}
 
 function PlayerAvatar({ headshot }) {
   return (
@@ -137,6 +185,16 @@ export default function NbaPlayersSection({ activeId }) {
   if (profileTeam?.abbreviation) teamMetaParts.push(profileTeam.abbreviation)
   const teamMetaLine = teamMetaParts.length ? teamMetaParts.join(' · ') : null
 
+  const profileStatsDisplay = useMemo(() => {
+    if (!profilePlayer || profileStats == null) return []
+    return statsWithinCareerYearsSorted(profileStats, profilePlayer.year_start, profilePlayer.year_end)
+  }, [profilePlayer, profileStats])
+
+  const hasProfileStatsRaw = Boolean(profileStats?.length)
+  const careerBounds =
+    parseCareerYear(profilePlayer?.year_start) != null &&
+    parseCareerYear(profilePlayer?.year_end) != null
+
   return (
     <SubPanel id="nba-players" activeId={activeId}>
       <SectionHeader title={profileTitle} />
@@ -206,27 +264,35 @@ export default function NbaPlayersSection({ activeId }) {
                   <div className="table-head" style={{ marginTop: 4 }}>
                     <div className="table-head-title">Season statistics</div>
                   </div>
-                  {profileStats?.length ? (
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Season</th>
-                          <th>PPG</th>
-                          <th>RPG</th>
-                          <th>APG</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {profileStats.map((s) => (
-                          <tr key={s.id}>
-                            <td>{s.season}</td>
-                            <td className="stat-hi">{s.ppg ?? '—'}</td>
-                            <td>{s.rpg ?? '—'}</td>
-                            <td>{s.apg ?? '—'}</td>
+                  {hasProfileStatsRaw ? (
+                    profileStatsDisplay.length ? (
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Season</th>
+                            <th>PPG</th>
+                            <th>RPG</th>
+                            <th>APG</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {profileStatsDisplay.map((s) => (
+                            <tr key={s.id}>
+                              <td>{s.season}</td>
+                              <td className="stat-hi">{s.ppg ?? '—'}</td>
+                              <td>{s.rpg ?? '—'}</td>
+                              <td>{s.apg ?? '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className="hc-muted" style={{ marginTop: 10 }}>
+                        {careerBounds
+                          ? `No statistics fall within career years ${profilePlayer.year_start}–${profilePlayer.year_end}.`
+                          : 'No statistics could be matched to these career years.'}
+                      </p>
+                    )
                   ) : (
                     <p className="hc-muted" style={{ marginTop: 10 }}>
                       No statistic rows for this player yet.
