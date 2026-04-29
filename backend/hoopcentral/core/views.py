@@ -94,6 +94,13 @@ def _resolve_season_start_year(season_param, variants):
     return _season_start_year(str(season_param).strip())
 
 
+def _stat_avg_one_decimal(val):
+    """Round a stat average (e.g. from Avg aggregation) to one decimal place."""
+    if val is None:
+        return None
+    return round(float(val), 1)
+
+
 def _statistics_players_active_in_season(queryset, season_y):
     """
     Keep Statistic rows only for players whose career [year_start, year_end]
@@ -337,11 +344,19 @@ def player_career_summary(request, player_id):
         .values("season", "ppg")
         .first()
     )
+
     summary = {
-        "avg_points": aggregated["avg_points"],
-        "avg_assists": aggregated["avg_assists"],
-        "avg_rebounds": aggregated["avg_rebounds"],
-        "best_scoring_season": best_scoring,
+        "avg_points": _stat_avg_one_decimal(aggregated["avg_points"]),
+        "avg_assists": _stat_avg_one_decimal(aggregated["avg_assists"]),
+        "avg_rebounds": _stat_avg_one_decimal(aggregated["avg_rebounds"]),
+        "best_scoring_season": (
+            {
+                "season": best_scoring["season"],
+                "ppg": _stat_avg_one_decimal(best_scoring["ppg"]),
+            }
+            if best_scoring is not None
+            else None
+        ),
         "seasons_count": career_stats.count(),
     }
 
