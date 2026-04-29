@@ -1,3 +1,11 @@
+"""
+REST API views for NBA player, team, statistic, and standing resources.
+
+Endpoints are registered under ``/api/`` (see ``core.urls``). The active league
+season for "current roster" is read from the ``SEASON`` environment variable
+at import time (see ``SEASON`` below).
+"""
+
 import os
 
 from django.db.models import Avg, IntegerField, Q
@@ -9,6 +17,12 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from .models import Player, Standing, Statistic, Team
+from .season_utils import (
+    resolved_season_label,
+    resolve_season_start_year,
+    season_lookup_variants,
+    stats_within_career_years,
+)
 from .serializers import (
     PlayerSerializer,
     StandingSerializer,
@@ -18,92 +32,60 @@ from .serializers import (
 
 SEASON = (os.environ.get("SEASON") or "2025-26").strip()
 
+STAT_LEADER_FIELDS = {
+    "points_per_game": "ppg",
+    "assists_per_game": "apg",
+    "rebounds_per_game": "rpg",
+}
+
 
 class StandardPagination(PageNumberPagination):
+    """Default page size and bounds for paginated list endpoints."""
+
     page_size = 20
     page_size_query_param = "page_size"
     max_page_size = 100
 
 
-def _season_start_year(season):
-    """NBA season keys (e.g. '2024-25') → first calendar year of that league year."""
-    if not season:
-        return None
-    season = str(season).strip()
-    if "-" in season:
-        head = season.split("-", 1)[0].strip()
-        if head.isdigit():
-            return int(head)
-        return None
-    if season.isdigit() and len(season) >= 4:
-        return int(season[:4])
-    return None
+def _paginated_response(request, queryset, serializer_cls):
+    """Return a DRF paginated JSON response for ``queryset`` using ``serializer_cls`` (many=True)."""
+
+    paginator = StandardPagination()
+    page = paginator.paginate_queryset(queryset, request)
+    serializer = serializer_cls(page, many=True)
+    return paginator.get_paginated_response(serializer.data)
 
 
-def _stats_within_career_years(queryset, year_start, year_end):
-    """
-    Statistic rows whose season's league start year is in [year_start, year_end]
-    (inclusive). Uses the same season-year rules as _season_start_year.
-    If years are not valid integers, returns queryset ordered by season unchanged.
-    """
-    try:
-        ymin = int(str(year_start).strip())
-    except (TypeError, ValueError):
-        ymin = None
-    try:
-        ymax = int(str(year_end).strip())
-    except (TypeError, ValueError):
-        ymax = None
-
-    if ymin is None and ymax is None:
-        return queryset.order_by("season")
-
-    pks = []
-    for pk, season in queryset.values_list("pk", "season"):
-        y = _season_start_year(season)
-        if y is None:
-            continue
-        if ymin is not None and y < ymin:
-            continue
-        if ymax is not None and y > ymax:
-            continue
-        pks.append(pk)
-    return queryset.filter(pk__in=pks).order_by("season")
-
-
-def _season_lookup_variants(season_param):
-    """
-    Match season rows whether the client sends a start year ('2000') or NBA-style
-    key ('2000-01'). Both forms are included so filters work either way.
-    """
-    raw = str(season_param).strip()
-    if not raw:
-        return [raw]
-    variants = [raw]
-    if raw.isdigit() and len(raw) == 4:
-        y = int(raw)
-        variants.append(f"{y}-{str(y + 1)[-2:]}")
-    elif "-" in raw:
-        head = raw.split("-", 1)[0].strip()
-        if head.isdigit() and len(head) == 4:
-            variants.append(head)
-    return list(dict.fromkeys(variants))
-
-
-def _resolve_season_start_year(season_param, variants):
-    """League start calendar year for the requested season (see _season_start_year)."""
-    for v in variants:
-        y = _season_start_year(v)
-        if y is not None:
-            return y
-    return _season_start_year(str(season_param).strip())
+def _team_optional(team_id):
+    """Return ``Team`` by primary key string, or ``None`` if missing."""
+    return Team.objects.filter(team_id=str(team_id)).first()
 
 
 def _stat_avg_one_decimal(val):
-    """Round a stat average (e.g. from Avg aggregation) to one decimal place."""
+    """Round a stat average (e.g. from ``Avg`` aggregation) to one decimal place."""
+
     if val is None:
         return None
     return round(float(val), 1)
+
+
+def _parse_limit(request, default=10, maximum=None):
+    """
+    Parse the ``limit`` query string as a positive integer, capped at ``maximum``.
+
+    Non-integer or non-positive values return ``default``.
+    """
+
+    if maximum is None:
+        maximum = StandardPagination.max_page_size
+    raw = request.query_params.get("limit", default)
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return default
+    if n < 1:
+        return default
+    return min(n, maximum)
 
 
 def _players_active_in_league_year(players_queryset, league_year):
@@ -111,6 +93,7 @@ def _players_active_in_league_year(players_queryset, league_year):
     Players whose career [year_start, year_end] includes the NBA league start year
     (e.g. 2025 for season key 2025-26). Non-numeric career years are excluded.
     """
+
     if league_year is None:
         return players_queryset
     return (
@@ -131,10 +114,10 @@ def _players_active_in_league_year(players_queryset, league_year):
 
 def _statistics_players_active_in_season(queryset, season_y):
     """
-    Keep Statistic rows only for players whose career [year_start, year_end]
+    Statistic rows only for players whose career [year_start, year_end]
     includes the league year season_y (e.g. 2025 for season key 2025-26).
-    Non-numeric year fields are excluded.
     """
+
     if season_y is None:
         return queryset
     return (
@@ -155,10 +138,12 @@ def _statistics_players_active_in_season(queryset, season_y):
 
 def _standing_for_team_season_or_404(team_id, variants):
     """
-    One Standing for (team_id, season variants). Uses .first() so duplicate rows
-    that only differ by season string (e.g. 2000 vs 2000-01) do not raise
-    MultipleObjectsReturned.
+    Load one ``Standing`` row for (``team_id``, season in ``variants``).
+
+    Raises ``Http404`` if no row exists. Duplicate season string variants (e.g.
+    ``2025`` vs ``2025-26``) resolve via ``.first()`` so at most one row is returned.
     """
+
     standing = (
         Standing.objects.select_related("team")
         .filter(team_id=team_id, season__in=variants)
@@ -172,45 +157,40 @@ def _standing_for_team_season_or_404(team_id, variants):
 
 @api_view(["GET"])
 def player_list(request):
-    players = Player.objects.all()
-    paginator = StandardPagination()
-    result = paginator.paginate_queryset(players, request)
-    serializer = PlayerSerializer(result, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    """Paginated list of all players (query params ``page``, ``page_size``)."""
+
+    players = Player.objects.all().order_by("pk")
+    return _paginated_response(request, players, PlayerSerializer)
 
 
 @api_view(["GET"])
 def team_list(request):
-    """Returns all teams"""
+    """Return every team record (not paginated)."""
 
-    teams = Team.objects.all()
+    teams = Team.objects.all().order_by("pk")
     serializer = TeamSerializer(teams, many=True)
     return Response(serializer.data)
 
 
 @api_view(["GET"])
 def statistic_list(request):
-    """Paginated player statistics index (`page`, `page_size` — same semantics as `/player`)."""
+    """Paginated index of player statistic rows (``page``, ``page_size``)."""
+
     statistics = Statistic.objects.all().select_related("player").order_by("pk")
-    paginator = StandardPagination()
-    result = paginator.paginate_queryset(statistics, request)
-    serializer = StatisticSerializer(result, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    return _paginated_response(request, statistics, StatisticSerializer)
 
 
 @api_view(["GET"])
 def standing_list(request):
-    """Paginated team standings index (`page`, `page_size` — same semantics as `/player`)."""
+    """Paginated index of team standings rows (``page``, ``page_size``)."""
+
     standings = Standing.objects.all().select_related("team").order_by("pk")
-    paginator = StandardPagination()
-    result = paginator.paginate_queryset(standings, request)
-    serializer = StandingSerializer(result, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    return _paginated_response(request, standings, StandingSerializer)
 
 
 @api_view(["GET"])
 def player_id(request, player_id):
-    """Return a player"""
+    """Return serialized ``Player`` data for ``player_id`` (404 if unknown)."""
 
     player = get_object_or_404(Player, player_id=player_id)
     serializer = PlayerSerializer(player)
@@ -219,7 +199,7 @@ def player_id(request, player_id):
 
 @api_view(["GET"])
 def team_id(request, team_id):
-    """Return a team"""
+    """Return serialized ``Team`` data for ``team_id`` (404 if unknown)."""
 
     team = get_object_or_404(Team, team_id=team_id)
     serializer = TeamSerializer(team)
@@ -228,29 +208,35 @@ def team_id(request, team_id):
 
 @api_view(["GET"])
 def player_statistic(request, player_id):
-    """Return a player statistic"""
+    """Return all ``Statistic`` rows for ``player_id``, sorted by ``season``."""
 
-    player_statistics = Statistic.objects.filter(player_id=player_id)
+    player_statistics = Statistic.objects.filter(player_id=player_id).order_by("season")
     serializer = StatisticSerializer(player_statistics, many=True)
     return Response(serializer.data)
 
 
 @api_view(["GET"])
 def team_standing(request, team_id):
-    """Return a team standing"""
+    """Return all ``Standing`` rows for ``team_id``, sorted by ``season``."""
 
-    team_standings = Standing.objects.filter(team_id=team_id).select_related("team")
+    team_standings = Standing.objects.filter(team_id=team_id).select_related("team").order_by(
+        "season"
+    )
     serializer = StandingSerializer(team_standings, many=True)
     return Response(serializer.data)
 
 
 @api_view(["GET"])
 def player_statistic_season(request, player_id, season):
-    """Return a player statistic by season"""
+    """
+    Statistics for ``player_id`` limited to ``season``.
 
-    variants = _season_lookup_variants(season)
-    player_statistics = Statistic.objects.filter(
-        player_id=player_id, season__in=variants
+    Accepts four-digit years or hyphenated NBA keys; season variants match stored rows.
+    """
+
+    variants = season_lookup_variants(season)
+    player_statistics = Statistic.objects.filter(player_id=player_id, season__in=variants).order_by(
+        "season"
     )
     serializer = StatisticSerializer(player_statistics, many=True)
     return Response(serializer.data)
@@ -258,19 +244,32 @@ def player_statistic_season(request, player_id, season):
 
 @api_view(["GET"])
 def team_standing_season(request, team_id, season):
-    """Return a team standing by season"""
+    """
+    Standings for ``team_id`` limited to ``season``.
 
-    variants = _season_lookup_variants(season)
-    team_standings = Standing.objects.filter(
-        team_id=team_id, season__in=variants
-    ).select_related("team")
+    Accepts four-digit years or hyphenated NBA keys; season variants match stored rows.
+    """
+
+    variants = season_lookup_variants(season)
+    team_standings = (
+        Standing.objects.filter(team_id=team_id, season__in=variants)
+        .select_related("team")
+        .order_by("season")
+    )
     serializer = StandingSerializer(team_standings, many=True)
     return Response(serializer.data)
 
 
 @api_view(["GET"])
 def player_search(request):
-    """Search players by name and/or NBA team name (full name, nickname, abbreviation)."""
+    """
+    Filter players using optional ``name`` and ``team`` query parameters.
+
+    ``name`` matches ``full_name``, ``first_name``, or ``last_name`` (case-insensitive).
+    ``team`` matches franchise ``full_name``, ``nickname``, or ``abbreviation``.
+    Results are sorted by ``full_name``.
+    """
+
     name = request.query_params.get("name")
     team = request.query_params.get("team")
 
@@ -292,36 +291,30 @@ def player_search(request):
                 | Q(team__abbreviation__icontains=t)
             )
 
-    serializer = PlayerSerializer(players, many=True)
+    serializer = PlayerSerializer(players.order_by("full_name"), many=True)
     return Response(serializer.data)
 
 
 @api_view(["GET"])
 def stat_leaders(request, season, stat_category):
     """
-    Get top players by stat category
-    e.g. /leaders/2024/points_per_game/?limit=10
+    Top ``Statistic`` rows for ``season`` by the chosen per-game category.
+
+    ``stat_category`` must be ``points_per_game``, ``assists_per_game``, or
+    ``rebounds_per_game``. Optional query ``limit`` (default 10, maximum 100).
+    Null stat values are excluded; only players whose career years include the
+    season's league year are returned.
     """
-    limit = int(request.query_params.get("limit", 10))
-    # API names map to Statistic model fields (ppg, apg, rpg)
-    category_field = {
-        "points_per_game": "ppg",
-        "assists_per_game": "apg",
-        "rebounds_per_game": "rpg",
-    }
-    valid_categories = list(category_field.keys())
 
-    if stat_category not in valid_categories:
-        return Response(
-            {"error": f"Invalid category. Choose from {valid_categories}"},
-            status=400,
-        )
+    if stat_category not in STAT_LEADER_FIELDS:
+        valid = list(STAT_LEADER_FIELDS.keys())
+        return Response({"error": f"Invalid category. Choose from {valid}"}, status=400)
 
-    field = category_field[stat_category]
-    variants = _season_lookup_variants(season)
-    season_y = _resolve_season_start_year(season, variants)
-    # Desc order on nullable fields puts NULLs first in PostgreSQL; exclude them so
-    # leaders reflect real values (applies to ppg, apg, rpg separately).
+    limit = _parse_limit(request)
+    field = STAT_LEADER_FIELDS[stat_category]
+    variants = season_lookup_variants(season)
+    season_y = resolve_season_start_year(season, variants)
+
     leaders = (
         Statistic.objects.select_related("player")
         .filter(season__in=variants)
@@ -335,8 +328,13 @@ def stat_leaders(request, season, stat_category):
 
 @api_view(["GET"])
 def team_compare(request, team_id_1, team_id_2, season):
-    """Compare two teams' standings and stats side by side"""
-    variants = _season_lookup_variants(season)
+    """
+    Compare two franchises' ``Standing`` rows for the same ``season``.
+
+    Returns 404 when either team lacks a standing for that season.
+    """
+
+    variants = season_lookup_variants(season)
     team1 = _standing_for_team_season_or_404(team_id_1, variants)
     team2 = _standing_for_team_season_or_404(team_id_2, variants)
 
@@ -350,14 +348,20 @@ def team_compare(request, team_id_1, team_id_2, season):
 
 @api_view(["GET"])
 def player_career_summary(request, player_id):
-    """Career averages and per-season stats within player's year_start..year_end."""
+    """
+    Career averages plus a per-season breakdown for ``player_id``.
+
+    Statistic rows are limited to seasons whose league year falls within
+    ``Player.year_start``..``Player.year_end``. Responds with 404 when there is
+    no data in that window.
+    """
 
     player = get_object_or_404(Player, player_id=player_id)
     stats = Statistic.objects.filter(player_id=player_id)
     if not stats.exists():
         return Response({"error": "No stats found"}, status=404)
 
-    career_stats = _stats_within_career_years(stats, player.year_start, player.year_end)
+    career_stats = stats_within_career_years(stats, player.year_start, player.year_end)
     if not career_stats.exists():
         return Response({"error": "No stats found"}, status=404)
 
@@ -403,16 +407,18 @@ def player_career_summary(request, player_id):
 @api_view(["GET"])
 def team_roster_current(request, team_id):
     """
-    Current roster for `SEASON` (from `.env` `SEASON`, same as ingestion scripts): players
-    assigned to the team with a stat line for that season whose career years still include
-    that league year.
+    Franchise roster tied to the configured ``SEASON`` (``SEASON`` in ``.env``).
+
+    Includes players assigned to ``team_id`` who have statistics in that season and
+    whose career year range still covers the season's league year.
     """
+
     tid = str(team_id)
-    team = Team.objects.filter(team_id=tid).first()
+    team = _team_optional(tid)
 
     season_key = SEASON
-    variants = list(dict.fromkeys(_season_lookup_variants(season_key)))
-    league_y = _resolve_season_start_year(season_key, variants)
+    variants = list(dict.fromkeys(season_lookup_variants(season_key)))
+    league_y = resolve_season_start_year(season_key, variants)
 
     players_qs = (
         Player.objects.filter(team_id=tid)
@@ -435,9 +441,10 @@ def team_roster_current(request, team_id):
 
 @api_view(["GET"])
 def team_roster(request, team_id):
-    """Historical roster: all players currently assigned (`Player.team_id`) to this franchise."""
+    """List every ``Player`` currently assigned to ``team_id`` (no season filter)."""
+
     tid = str(team_id)
-    team = Team.objects.filter(team_id=tid).first()
+    team = _team_optional(tid)
     players = Player.objects.filter(team_id=tid).select_related("team").order_by("full_name")
     return Response(
         {
@@ -450,20 +457,23 @@ def team_roster(request, team_id):
 
 @api_view(["GET"])
 def season_summary(request, season):
-    """Overview of an entire season"""
+    """
+    All team standings for ``season``, sorted by wins (highest first).
 
-    variants = _season_lookup_variants(season)
+    The response ``season`` field uses the hyphenated NBA label when both bare
+    year and hyphenated variants are available.
+    """
+
+    variants = season_lookup_variants(season)
     standings = (
         Standing.objects.filter(season__in=variants)
         .select_related("team")
         .order_by("-wins")
     )
-    
-    resolved = variants[-1] if len(variants) > 1 else variants[0]
 
     return Response(
         {
-            "season": resolved,
+            "season": resolved_season_label(variants),
             "standings": StandingSerializer(standings, many=True).data,
         }
     )
