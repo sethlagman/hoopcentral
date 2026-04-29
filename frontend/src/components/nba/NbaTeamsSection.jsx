@@ -49,7 +49,9 @@ export default function NbaTeamsSection({ activeId }) {
 
   if (!visible) return null
 
-  const list = Array.isArray(teams) ? teams : []
+  const list = Array.isArray(teams)
+    ? teams.filter((t) => Boolean(t.full_name?.trim()))
+    : []
 
   return (
     <SubPanel id="nba-teams" activeId={activeId}>
