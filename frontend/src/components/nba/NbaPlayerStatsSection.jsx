@@ -22,12 +22,14 @@ export default function NbaPlayerStatsSection({ activeId }) {
 
   const [profile, setProfile] = useState(null)
   const [stats, setStats] = useState(null)
+  const [playerLookupDone, setPlayerLookupDone] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   const [seasonStats, setSeasonStats] = useState(null)
   const [ssLoading, setSsLoading] = useState(false)
   const [ssErr, setSsErr] = useState(null)
+  const [seasonSliceRequested, setSeasonSliceRequested] = useState(false)
 
   const [career, setCareer] = useState(null)
   const [cLoading, setCLoading] = useState(false)
@@ -60,12 +62,16 @@ export default function NbaPlayerStatsSection({ activeId }) {
         setStats(st)
       })
       .catch((err) => setError(err.message || String(err)))
-      .finally(() => setLoading(false))
+      .finally(() => {
+        setLoading(false)
+        setPlayerLookupDone(true)
+      })
   }
 
   const loadSeasonSlice = (e) => {
     e.preventDefault()
     if (!playerId.trim()) return
+    setSeasonSliceRequested(true)
     setSsLoading(true)
     setSsErr(null)
     fetchPlayerStatisticsSeason(playerId.trim(), season.trim())
@@ -120,7 +126,6 @@ export default function NbaPlayerStatsSection({ activeId }) {
 
   const loadStatDump = (e) => {
     e.preventDefault()
-    if (!window.confirm('Load /statistic (full list). May be large and slow.')) return
     setBLoading(true)
     setBErr(null)
     fetchStatisticList()
@@ -133,11 +138,11 @@ export default function NbaPlayerStatsSection({ activeId }) {
 
   return (
     <SubPanel id="nba-player-stats" activeId={activeId}>
-      <SectionHeader title="Player & team statistics" />
+      <SectionHeader title="Player & team stats" />
 
       <div className="table-wrap">
         <div className="table-head">
-          <div className="table-head-title">Player profile & all seasons</div>
+          <div className="table-head-title">Player lookup</div>
         </div>
         <form className="hc-toolbar" onSubmit={loadPlayer}>
           <input
@@ -151,19 +156,25 @@ export default function NbaPlayerStatsSection({ activeId }) {
             {loading ? 'Loading…' : 'Load'}
           </button>
         </form>
-        <ApiState loading={loading} error={error} empty={!loading && !error && !profile}>
+        <ApiState
+          loading={loading}
+          error={error}
+          empty={
+            Boolean(playerLookupDone && !loading && !error && !profile)
+          }
+        >
           {profile ? (
             <div className="hc-card">
               <div className="hc-card-title">{profile.full_name}</div>
               <div className="hc-muted">
-                Team: {profile.team} · {profile.year_start}–{profile.year_end}
+                Team ID {profile.team} · {profile.year_start}–{profile.year_end}
               </div>
             </div>
           ) : null}
         </ApiState>
-        <ApiState empty={!stats?.length} error={null} loading={false}>
+        <ApiState empty={Boolean(Array.isArray(stats) && stats.length === 0)} error={null} loading={false}>
           {stats?.length ? (
-            <table style={{ marginTop: 12 }}>
+            <table>
               <thead>
                 <tr>
                   <th>Season</th>
@@ -189,7 +200,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
 
       <div className="table-wrap" style={{ marginTop: 16 }}>
         <div className="table-head">
-          <div className="table-head-title">Season slice — /statistic/…/season</div>
+          <div className="table-head-title">One season breakdown</div>
         </div>
         <form className="hc-toolbar" onSubmit={loadSeasonSlice}>
           <input
@@ -199,7 +210,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
             onChange={(e) => setSeason(e.target.value)}
           />
           <button type="submit" className="hc-btn" disabled={ssLoading}>
-            {ssLoading ? '…' : 'Load season'}
+            {ssLoading ? 'Loading…' : 'Load season'}
           </button>
         </form>
         {ssErr ? <div className="hc-api-msg hc-api-err">{ssErr}</div> : null}
@@ -225,15 +236,15 @@ export default function NbaPlayerStatsSection({ activeId }) {
             </tbody>
           </table>
         ) : (
-          !ssLoading && (
-            <p className="hc-muted">Filtered rows for one season variant from the API.</p>
-          )
+          seasonSliceRequested &&
+          !ssLoading &&
+          !ssErr && <p className="hc-muted" style={{ marginTop: 10 }}>No rows for that season.</p>
         )}
       </div>
 
       <div className="table-wrap" style={{ marginTop: 16 }}>
         <div className="table-head">
-          <div className="table-head-title">Career summary — career years only</div>
+          <div className="table-head-title">Career snapshot</div>
         </div>
         <form className="hc-toolbar" onSubmit={loadCareer}>
           <button type="submit" className="hc-btn" disabled={cLoading || !playerId.trim()}>
@@ -256,7 +267,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
                   : '—'}
               </div>
             </div>
-            <table style={{ marginTop: 12 }}>
+            <table>
               <thead>
                 <tr>
                   <th>Season</th>
@@ -282,7 +293,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
 
       <div className="table-wrap" style={{ marginTop: 16 }}>
         <div className="table-head">
-          <div className="table-head-title">Team roster & standings (by team ID)</div>
+          <div className="table-head-title">Roster & team record</div>
         </div>
         <form className="hc-toolbar">
           <input
@@ -296,7 +307,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
             {rLoading ? '…' : 'Roster'}
           </button>
           <button type="button" className="hc-btn hc-btn-ghost" onClick={loadTeamStandings} disabled={stLoading}>
-            {stLoading ? '…' : 'All standings rows'}
+            {stLoading ? '…' : 'Full history'}
           </button>
           <button
             type="button"
@@ -304,7 +315,7 @@ export default function NbaPlayerStatsSection({ activeId }) {
             onClick={loadTeamStandingsSeason}
             disabled={stsLoading}
           >
-            {stsLoading ? '…' : 'Standings × season'}
+            {stsLoading ? '…' : 'This season'}
           </button>
         </form>
         {rErr ? <div className="hc-api-msg hc-api-err">{rErr}</div> : null}
@@ -375,37 +386,41 @@ export default function NbaPlayerStatsSection({ activeId }) {
         ) : null}
       </div>
 
-      <div className="table-wrap" style={{ marginTop: 16 }}>
-        <div className="table-head">
-          <div className="table-head-title">League statistic index sample — /statistic</div>
-        </div>
-        <button type="button" className="hc-btn hc-btn-ghost" onClick={loadStatDump} disabled={bLoading}>
-          {bLoading ? 'Loading…' : 'Load first 80 rows'}
-        </button>
-        {bErr ? <div className="hc-api-msg hc-api-err">{bErr}</div> : null}
-        {bulk?.length ? (
-          <table style={{ marginTop: 12 }}>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Season</th>
-                <th>Player</th>
-                <th>PPG</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bulk.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.id}</td>
-                  <td>{row.season}</td>
-                  <td>{row.player}</td>
-                  <td>{row.ppg ?? '—'}</td>
+      <details className="hc-advanced-details" style={{ marginTop: 16 }}>
+        <summary className="hc-advanced-summary">League-wide stat sample (bulk index)</summary>
+        <div className="table-wrap hc-advanced-inner">
+          <p className="hc-muted" style={{ marginBottom: 10 }}>
+            Optional: load a wider cross-section than a single-player lookup. It is a heavier request—
+            preview only.
+          </p>
+          <button type="button" className="hc-btn hc-btn-ghost" onClick={loadStatDump} disabled={bLoading}>
+            {bLoading ? 'Loading…' : 'Load preview (80 rows)'}
+          </button>
+          {bErr ? <div className="hc-api-msg hc-api-err">{bErr}</div> : null}
+          {bulk?.length ? (
+            <table style={{ marginTop: 12 }}>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Season</th>
+                  <th>Player</th>
+                  <th>PPG</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
-      </div>
+              </thead>
+              <tbody>
+                {bulk.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.id}</td>
+                    <td>{row.season}</td>
+                    <td>{row.player}</td>
+                    <td>{row.ppg ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+        </div>
+      </details>
     </SubPanel>
   )
 }

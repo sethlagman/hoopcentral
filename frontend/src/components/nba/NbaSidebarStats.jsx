@@ -8,7 +8,7 @@ function chip(row, statKey, suffix) {
   if (!row) return '—'
   const v = row[statKey]
   const val = v != null ? Number(v).toFixed(1) : '—'
-  return `#${row.player} · ${val} ${suffix}`
+  return `${val} ${suffix}`
 }
 
 export default function NbaSidebarStats({ active }) {
@@ -45,7 +45,7 @@ export default function NbaSidebarStats({ active }) {
 
   return (
     <div className="sidebar-block">
-      <div className="sidebar-block-title">Quick stats (API)</div>
+      <div className="sidebar-block-title">Leader snapshot</div>
       {err ? (
         <div className="hc-api-msg hc-api-err" style={{ fontSize: 11 }}>
           {err}

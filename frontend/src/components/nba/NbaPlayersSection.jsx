@@ -57,10 +57,10 @@ export default function NbaPlayersSection({ activeId }) {
 
   return (
     <SubPanel id="nba-players" activeId={activeId}>
-      <SectionHeader title="NBA Players" />
+      <SectionHeader title="NBA roster" />
       <div className="table-wrap">
         <div className="table-head">
-          <div className="table-head-title">Search & directory (live API)</div>
+          <div className="table-head-title">Find a player</div>
         </div>
         <form className="hc-toolbar" onSubmit={runSearch}>
           <input
@@ -125,7 +125,7 @@ export default function NbaPlayersSection({ activeId }) {
 
       <div className="table-wrap" style={{ marginTop: 16 }}>
         <div className="table-head">
-          <div className="table-head-title">Paginated roster — API /player</div>
+          <div className="table-head-title">Full directory</div>
           <HcToolbar>
             <span className="hc-toolbar-meta">
               Page {page} of {totalPages} · {count} players

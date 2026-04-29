@@ -49,10 +49,10 @@ export default function NbaLeadersSection({ activeId }) {
 
   return (
     <SubPanel id="nba-player-leaders" activeId={activeId}>
-      <SectionHeader title="Player leaderboards" />
+      <SectionHeader title="Leaderboards" />
       <div className="table-wrap">
         <div className="table-head">
-          <div className="table-head-title">Stat leaders — /leaders/season/category</div>
+          <div className="table-head-title">Stat leaders</div>
         </div>
         <HcToolbar>
           <input
@@ -92,8 +92,8 @@ export default function NbaLeadersSection({ activeId }) {
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th>Player ID</th>
+                <th>Rank</th>
+                <th>Player #</th>
                 <th>Season</th>
                 <th>{statLabel}</th>
               </tr>

@@ -3,7 +3,6 @@ import SectionHeader from '../SectionHeader'
 import SubPanel from '../SubPanel'
 import { DEFAULT_NBA_SEASON } from '../../config/api.js'
 import { fetchSeasonSummary, fetchTeamCompare } from '../../api/hoopcentral.js'
-import { ApiState } from './ApiUi.jsx'
 
 export default function NbaTeamCompareSection({ activeId }) {
   const visible = activeId === 'nba-team-leaders'
@@ -48,10 +47,10 @@ export default function NbaTeamCompareSection({ activeId }) {
 
   return (
     <SubPanel id="nba-team-leaders" activeId={activeId}>
-      <SectionHeader title="Team leaderboards" />
+      <SectionHeader title="Team matchups & ranks" />
       <div className="table-wrap">
         <div className="table-head">
-          <div className="table-head-title">Head-to-head — /team/compare/…</div>
+          <div className="table-head-title">Head-to-head</div>
         </div>
         <form className="hc-toolbar" onSubmit={loadCompare}>
           <input
@@ -73,7 +72,7 @@ export default function NbaTeamCompareSection({ activeId }) {
             onChange={(e) => setSeason(e.target.value)}
           />
           <button type="submit" className="hc-btn" disabled={loading}>
-            {loading ? '…' : 'Compare'}
+            {loading ? 'Loading…' : 'Compare'}
           </button>
         </form>
         {error ? <div className="hc-api-msg hc-api-err">{error}</div> : null}
@@ -107,14 +106,12 @@ export default function NbaTeamCompareSection({ activeId }) {
               )
             })}
           </div>
-        ) : (
-          <p className="hc-muted">Uses standing rows for the season you enter.</p>
-        )}
+        ) : null}
       </div>
 
       <div className="table-wrap" style={{ marginTop: 16 }}>
         <div className="table-head">
-          <div className="table-head-title">Top records (same API as standings)</div>
+          <div className="table-head-title">Top of the standings</div>
         </div>
         <form className="hc-toolbar" onSubmit={loadBoard}>
           <input
@@ -124,34 +121,41 @@ export default function NbaTeamCompareSection({ activeId }) {
             onChange={(e) => setSeason(e.target.value)}
           />
           <button type="submit" className="hc-btn hc-btn-ghost" disabled={bLoading}>
-            {bLoading ? '…' : 'Load ranking'}
+            {bLoading ? 'Loading…' : 'Load leaderboard'}
           </button>
         </form>
         {bErr ? <div className="hc-api-msg hc-api-err">{bErr}</div> : null}
-        <ApiState loading={false} error={null} empty={topByWins.length === 0 && !bLoading}>
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Team</th>
-                <th>W</th>
-                <th>L</th>
-                <th>PCT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topByWins.map((row, i) => (
-                <tr key={row.id}>
-                  <td>{i + 1}</td>
-                  <td>{row.team_name ?? row.team}</td>
-                  <td>{row.wins}</td>
-                  <td>{row.losses}</td>
-                  <td className="stat-hi">{row.winrate}</td>
+        {bLoading ? <div className="hc-api-msg">Loading…</div> : null}
+        {!bLoading && board !== null ? (
+          topByWins.length ? (
+            <table style={{ marginTop: 12 }}>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Team</th>
+                  <th>W</th>
+                  <th>L</th>
+                  <th>PCT</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </ApiState>
+              </thead>
+              <tbody>
+                {topByWins.map((row, i) => (
+                  <tr key={row.id}>
+                    <td>{i + 1}</td>
+                    <td>{row.team_name ?? row.team}</td>
+                    <td>{row.wins}</td>
+                    <td>{row.losses}</td>
+                    <td className="stat-hi">{row.winrate}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="hc-muted" style={{ padding: '12px 16px' }}>
+              No standings returned for that season.
+            </p>
+          )
+        ) : null}
       </div>
     </SubPanel>
   )

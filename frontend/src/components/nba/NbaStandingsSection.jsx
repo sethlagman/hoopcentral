@@ -40,7 +40,6 @@ export default function NbaStandingsSection({ activeId }) {
 
   const loadBulk = (e) => {
     e.preventDefault()
-    if (!window.confirm('Load ALL rows from /standing. May be large.')) return
     setBLoading(true)
     setBErr(null)
     fetchStandingList()
@@ -55,10 +54,10 @@ export default function NbaStandingsSection({ activeId }) {
 
   return (
     <SubPanel id="nba-team-stats" activeId={activeId}>
-      <SectionHeader title="Team stats & standings" />
+      <SectionHeader title="Standings" />
       <div className="table-wrap">
         <div className="table-head">
-          <div className="table-head-title">Conference standings snapshot — /season/…/summary</div>
+          <div className="table-head-title">Conference standings</div>
         </div>
         <HcToolbar>
           <input
@@ -69,9 +68,6 @@ export default function NbaStandingsSection({ activeId }) {
           />
         </HcToolbar>
         <ApiState loading={loading} error={error} empty={!loading && !error && standings.length === 0}>
-          <p className="hc-muted" style={{ marginBottom: 8 }}>
-            Resolved season label: <strong>{data?.season ?? '—'}</strong>
-          </p>
           <table>
             <thead>
               <tr>
@@ -99,11 +95,16 @@ export default function NbaStandingsSection({ activeId }) {
 
       <div className="table-wrap" style={{ marginTop: 16 }}>
         <div className="table-head">
-          <div className="table-head-title">Full standings table (sample)</div>
+          <div className="table-head-title">League standings snapshot</div>
         </div>
-        <button type="button" className="hc-btn hc-btn-ghost" onClick={loadBulk} disabled={bLoading}>
-          {bLoading ? 'Loading…' : 'Load /standing (first 120)'}
-        </button>
+        <p className="hc-muted" style={{ padding: '0 16px', marginBottom: 8 }}>
+          Quick slice of league-wide standings (first 120 teams). Larger download—give it a second.
+        </p>
+        <div style={{ padding: '0 16px 12px' }}>
+          <button type="button" className="hc-btn hc-btn-ghost" onClick={loadBulk} disabled={bLoading}>
+            {bLoading ? 'Loading…' : 'Load snapshot'}
+          </button>
+        </div>
         {bErr ? <div className="hc-api-msg hc-api-err">{bErr}</div> : null}
         {bulk?.length ? (
           <table style={{ marginTop: 12 }}>

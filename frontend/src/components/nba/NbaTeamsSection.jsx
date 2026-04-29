@@ -53,10 +53,10 @@ export default function NbaTeamsSection({ activeId }) {
 
   return (
     <SubPanel id="nba-teams" activeId={activeId}>
-      <SectionHeader title="NBA teams" />
+      <SectionHeader title="Teams" />
       <div className="table-wrap">
         <div className="table-head">
-          <div className="table-head-title">All teams — /team</div>
+          <div className="table-head-title">Every franchise</div>
         </div>
         <ApiState loading={loading} error={error} empty={!loading && !error && list.length === 0}>
           <table>
@@ -92,7 +92,7 @@ export default function NbaTeamsSection({ activeId }) {
 
       <div className="table-wrap" style={{ marginTop: 16 }}>
         <div className="table-head">
-          <div className="table-head-title">Team detail — /team/:id</div>
+          <div className="table-head-title">Team profile</div>
         </div>
         <form className="hc-toolbar" onSubmit={loadDetail}>
           <input

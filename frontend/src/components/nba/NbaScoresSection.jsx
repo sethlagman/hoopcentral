@@ -10,11 +10,11 @@ export default function NbaScoresSection({ activeId }) {
       <SectionHeader title="Scores & schedule" />
       <div className="table-wrap">
         <div className="table-head">
-          <div className="table-head-title">Live scores feed</div>
+          <div className="table-head-title">Tonight & upcoming</div>
         </div>
-        <p className="hc-muted">
-          There is no game schedule endpoint in the current REST API yet. Use the ticker and cards
-          above as UI placeholders — wire this panel when a schedule/games route is available.
+        <p className="hc-muted" style={{ padding: '12px 16px' }}>
+          Game feeds are not wired yet. When live scores arrive, finals and previews will slot in here
+          alongside tickers elsewhere on this page.
         </p>
       </div>
     </SubPanel>

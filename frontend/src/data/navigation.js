@@ -3,12 +3,12 @@ export const SUBSECTIONS = {
   home: [],
   nba: [
     { id: 'nba-players', label: 'Players' },
-    { id: 'nba-player-stats', label: 'Player Stats' },
-    { id: 'nba-player-leaders', label: 'Player Leaderboards' },
+    { id: 'nba-player-stats', label: 'Stats' },
+    { id: 'nba-player-leaders', label: 'Leaders' },
     { id: 'nba-teams', label: 'Teams' },
-    { id: 'nba-team-stats', label: 'Team Stats / Standings' },
-    { id: 'nba-team-leaders', label: 'Team Leaderboards' },
-    { id: 'nba-scores-tab', label: 'Scores & Schedule' },
+    { id: 'nba-team-stats', label: 'Standings' },
+    { id: 'nba-team-leaders', label: 'Matchups & ranks' },
+    { id: 'nba-scores-tab', label: 'Scores & schedule' },
   ],
   fifa: [
     { id: 'fifa-players', label: 'Players' },
