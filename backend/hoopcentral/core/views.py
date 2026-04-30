@@ -8,7 +8,7 @@ at import time (see ``SEASON`` below).
 
 import os
 
-from django.db.models import Avg, IntegerField, Q
+from django.db.models import Avg, Exists, IntegerField, OuterRef, Q
 from django.db.models.functions import Cast
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -436,11 +436,9 @@ def player_career_summary(request, player_id):
 @api_view(["GET"])
 def team_roster_current(request, team_id):
     """
-    Franchise roster tied to the configured ``SEASON`` (``SEASON`` in ``.env``).
-
-    Players must have statistics for that season and ``Player.is_active`` True.
-    Career ``year_start``/``year_end`` are not used here so waived or inactive
-    players are omitted even when ``year_end`` still covers the league year.
+    Today's roster for this franchise: ``Player.team`` matches, ``is_active``
+    True, and there are statistics for the configured ``SEASON`` (``.env``).
+    Waived / inactive players are excluded even if they have stats for ``SEASON``.
     """
 
     tid = str(team_id)
@@ -472,11 +470,9 @@ def team_roster_current(request, team_id):
 @api_view(["GET"])
 def team_roster_season(request, team_id, season):
     """
-    Franchise roster for an arbitrary NBA ``season`` key (e.g. ``2024`` or ``2025-26``).
-
-    When ``season`` matches the league year of ``SEASON`` (current campaign),
-    results use ``Player.is_active`` only (same rules as ``team_roster_current``).
-    For older seasons, inclusion uses career ``year_start``/``year_end`` overlap.
+    Players who have a ``Statistic`` row for ``season`` **for this franchise**
+    (``Statistic.team`` must match — never inferred from ``Player.team`` alone).
+    Waived / inactive players still appear when that row exists.
     """
 
     tid = str(team_id)
@@ -488,19 +484,19 @@ def team_roster_season(request, team_id, season):
     variants = list(dict.fromkeys(season_lookup_variants(season_key)))
     league_y = resolve_season_start_year(season_key, variants)
 
-    players_qs = (
-        Player.objects.filter(team_id=tid)
-        .filter(statistics__season__in=variants)
-        .select_related("team")
-        .distinct()
+    played_for_franchise = Statistic.objects.filter(
+        player_id=OuterRef("player_id"),
+        season__in=variants,
+        team_id=tid,
     )
-    if _same_league_campaign_as_env(season_key):
-        players_qs = players_qs.filter(is_active=True)
-        roster_scope = "active_only"
-    else:
-        players_qs = _players_active_in_league_year(players_qs, league_y)
-        roster_scope = "career_years"
-    players_qs = players_qs.order_by("full_name")
+    players_qs = (
+        Player.objects.filter(Exists(played_for_franchise))
+        .select_related("team")
+        .order_by("full_name")
+    )
+    
+    players_qs = _players_active_in_league_year(players_qs, league_y)
+    roster_scope = "stat_team_season"
 
     serializer = PlayerSerializer(players_qs, many=True)
     return Response(
