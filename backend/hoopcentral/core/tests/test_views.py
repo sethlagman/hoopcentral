@@ -259,6 +259,52 @@ class CareerAndRosterTests(TestCase):
         self.assertIn("805-a", ids)
         self.assertNotIn("805-w", ids)
 
+    @patch("core.views.SEASON", "2025-26")
+    def test_team_roster_season_current_campaign_includes_inactive(self):
+        """Season search for the env campaign includes waived/inactive with stats."""
+        t = _mk_team("806")
+        active = _mk_player(t, pid="806-a")
+        waived = _mk_player(
+            t,
+            pid="806-w",
+            full_name="Waived",
+            last_name="Player",
+            is_active=False,
+        )
+        _mk_stat(active, team=t)
+        _mk_stat(waived, team=t)
+        r = self.client.get("/api/team/806/roster/2025-26")
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        body = r.json()
+        ids = {row["player_id"] for row in body["roster"]}
+        self.assertIn("806-a", ids)
+        self.assertIn("806-w", ids)
+        self.assertEqual(body["roster_scope"], "stat_team_season")
+
+    @patch("core.views.SEASON", "2025-26")
+    def test_team_roster_season_uses_stat_franchise_not_only_player_team(self):
+        """Roster for a season follows ``Statistic.team``, not only ``Player.team``."""
+        indiana = _mk_team("830")
+        other = _mk_team("831")
+        p = _mk_player(other, pid="830-p", year_start="2019", year_end="2030")
+        _mk_stat(p, season="2025-26", team=indiana)
+        r = self.client.get("/api/team/830/roster/2025-26")
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        ids = {row["player_id"] for row in r.json()["roster"]}
+        self.assertIn("830-p", ids)
+
+    @patch("core.views.SEASON", "2025-26")
+    def test_team_roster_season_excludes_when_stat_line_is_for_other_franchise(self):
+        """Assigned to this franchise but stats for another team that season — not listed."""
+        indiana = _mk_team("832")
+        other = _mk_team("833")
+        p = _mk_player(indiana, pid="832-p", year_start="2019", year_end="2030")
+        _mk_stat(p, season="2025-26", team=other)
+        r = self.client.get("/api/team/832/roster/2025-26")
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        ids = {row["player_id"] for row in r.json()["roster"]}
+        self.assertNotIn("832-p", ids)
+
     def test_team_roster_full_lists_assignments(self):
         t = _mk_team("804")
         _mk_player(t, pid="804-a")
