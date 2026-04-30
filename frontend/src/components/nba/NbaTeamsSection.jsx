@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react'
 import SectionHeader from '../SectionHeader'
 import SubPanel from '../SubPanel'
 import { DEFAULT_NBA_SEASON } from '../../config/api.js'
-import { fetchTeam, fetchTeamList, fetchTeamRosterSeason } from '../../api/hoopcentral.js'
+import {
+  fetchTeam,
+  fetchTeamCurrentRoster,
+  fetchTeamList,
+  fetchTeamRosterSeason,
+} from '../../api/hoopcentral.js'
 import { ApiState, HcToolbar } from './ApiUi.jsx'
 
 /* eslint-disable react-hooks/set-state-in-effect -- loading flags before async fetch */
@@ -36,6 +41,7 @@ export default function NbaTeamsSection({ activeId }) {
 
   const [seasonInput, setSeasonInput] = useState(DEFAULT_NBA_SEASON)
   const [appliedSeason, setAppliedSeason] = useState(DEFAULT_NBA_SEASON)
+  const [rosterMode, setRosterMode] = useState('season')
 
   const [rosterData, setRosterData] = useState(null)
   const [rosterLoading, setRosterLoading] = useState(false)
@@ -68,6 +74,7 @@ export default function NbaTeamsSection({ activeId }) {
     if (profileTeamId) {
       setSeasonInput(DEFAULT_NBA_SEASON)
       setAppliedSeason(DEFAULT_NBA_SEASON)
+      setRosterMode('season')
     }
   }, [profileTeamId])
 
@@ -108,7 +115,11 @@ export default function NbaTeamsSection({ activeId }) {
     setRosterLoading(true)
     setRosterErr(null)
     setRosterData(null)
-    fetchTeamRosterSeason(profileTeamId, appliedSeason)
+    const req =
+      rosterMode === 'current'
+        ? fetchTeamCurrentRoster(profileTeamId)
+        : fetchTeamRosterSeason(profileTeamId, appliedSeason)
+    req
       .then((d) => {
         if (!cancelled) setRosterData(d)
       })
@@ -121,7 +132,7 @@ export default function NbaTeamsSection({ activeId }) {
     return () => {
       cancelled = true
     }
-  }, [visible, profileTeamId, appliedSeason])
+  }, [visible, profileTeamId, rosterMode, appliedSeason])
 
   const applySeason = (e) => {
     e.preventDefault()
@@ -191,20 +202,50 @@ export default function NbaTeamsSection({ activeId }) {
 
             <div className="table-wrap" style={{ marginTop: 16 }}>
               <div className="table-head">
-                <div className="table-head-title">Season roster</div>
+                <div className="table-head-title">Roster</div>
               </div>
-              <form className="hc-toolbar" onSubmit={applySeason}>
-                <input
-                  className="hc-input"
-                  placeholder="Season (e.g. 2025 or 2025-26)"
-                  value={seasonInput}
-                  onChange={(e) => setSeasonInput(e.target.value)}
-                  aria-label="NBA season for roster"
-                />
-                <button type="submit" className="hc-btn" disabled={rosterLoading}>
-                  {rosterLoading ? 'Loading…' : 'Load roster'}
+              <div className="hc-toolbar" role="group" aria-label="Roster type">
+                <button
+                  type="button"
+                  className={`hc-btn${rosterMode === 'season' ? '' : ' hc-btn-ghost'}`}
+                  onClick={() => setRosterMode('season')}
+                >
+                  By season
                 </button>
-              </form>
+                <button
+                  type="button"
+                  className={`hc-btn${rosterMode === 'current' ? '' : ' hc-btn-ghost'}`}
+                  onClick={() => setRosterMode('current')}
+                >
+                  Current roster (active only)
+                </button>
+              </div>
+              {rosterMode === 'season' ? (
+                <>
+                  <p className="hc-api-msg hc-muted" style={{ marginBottom: 8 }}>
+                    Everyone who has a <strong>stat line for that season</strong> for this franchise
+                    (including waived / inactive). Not the same as today&apos;s active roster.
+                  </p>
+                  <form className="hc-toolbar" onSubmit={applySeason}>
+                    <input
+                      className="hc-input"
+                      placeholder="Season (e.g. 2025 or 2025-26)"
+                      value={seasonInput}
+                      onChange={(e) => setSeasonInput(e.target.value)}
+                      aria-label="NBA season for roster"
+                    />
+                    <button type="submit" className="hc-btn" disabled={rosterLoading}>
+                      {rosterLoading ? 'Loading…' : 'Load roster'}
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <p className="hc-api-msg hc-muted" style={{ marginBottom: 8 }}>
+                  Uses the league season from the API (your backend <code>SEASON</code>). Only
+                  players with <strong>is_active</strong> in the latest import.
+                  {rosterData?.season ? ` Season: ${rosterData.season}.` : ''}
+                </p>
+              )}
               {rosterErr ? <div className="hc-api-msg hc-api-err">{rosterErr}</div> : null}
               {!rosterLoading && !rosterErr && rosterRows.length ? (
                 <table>
