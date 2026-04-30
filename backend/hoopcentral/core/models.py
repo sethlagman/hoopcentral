@@ -32,6 +32,14 @@ class Player(models.Model):
 
 class Statistic(models.Model):
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='statistics')
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE,
+        related_name='season_statistics',
+        null=True,
+        blank=True,
+        help_text='Franchise this stat line was accumulated for (NBA season team).',
+    )
     season = models.CharField('Season statistic', max_length=30)
     ppg = models.DecimalField('Points per game', max_digits=5, decimal_places=1, null=True)
     rpg = models.DecimalField('Rebounds per game', max_digits=5, decimal_places=1, null=True)
