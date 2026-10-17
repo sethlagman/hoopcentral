@@ -3,6 +3,7 @@
 # =============================================================================
 # Run:    docker compose up -d
 # Rebuild: docker compose up -d --build
+#          (only after Dockerfile or requirements.txt changes)
 # Stop:   docker compose down
 # Logs:   docker compose logs -f backend
 # =============================================================================
@@ -42,6 +43,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: hoopcentral-backend
     container_name: hoopcentral-backend
     restart: unless-stopped
     # Load env vars from .env file (DB_NAME, SECRET_KEY, etc.)
@@ -52,13 +54,16 @@ services:
       DB_PORT: "5432"
       # Allow Docker host for ALLOWED_HOSTS (add your domain in production)
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+    # Host source covers the code copied at build time. Installed packages stay in the image.
+    volumes:
+      - ./backend:/app
     # Expose Django on port 8000 - access at http://localhost:8000
     ports:
       - "8000:8000"
-    # Run migrations on startup (optional - comment out if you prefer manual migrations)
+    # --reload restarts workers when mounted Python files change
     command: >
       sh -c "python manage.py migrate --noinput &&
-             python -m gunicorn --bind 0.0.0.0:8000 --workers 4 hoopcentral.wsgi:application"
+             python -m gunicorn --bind 0.0.0.0:8000 --workers 1 --reload hoopcentral.wsgi:application"
 
   # ---------------------------------------------------------------------------
   # React Frontend (development with hot reload)
