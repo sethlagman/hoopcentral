@@ -42,6 +42,10 @@ RUN pip install --upgrade pip \
 # Note: .dockerignore excludes unnecessary files (see .dockerignore)
 COPY . .
 
+# output/ is excluded from the build, so the host processed folder is not copied in.
+# Compose bind-mounts ./backend over /app and uses the folder that already exists there.
+RUN mkdir -p /app/data_ingestion/output/processed
+
 # -----------------------------------------------------------------------------
 # Switch to Django project directory
 # -----------------------------------------------------------------------------
