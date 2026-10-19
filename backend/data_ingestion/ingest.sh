@@ -32,8 +32,8 @@ python /app/data_ingestion/processer/process_nba_standing.py
 cd /app/hoopcentral
 python manage.py migrate --noinput
 python manage.py seed_team
+python manage.py seed_standing
 python manage.py seed_player
 python manage.py seed_stat
-python manage.py seed_standing
 
 echo "Ingestion complete"
