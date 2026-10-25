@@ -60,3 +60,28 @@ class Standing(models.Model):
     last10 = models.CharField('Team Last 10 Games Standing', max_length=20, null=True)
     overtime = models.CharField('Team Overtime Count', max_length=20)
     winstreak = models.CharField('Team win streak', max_length=20, null=True)
+
+
+class Game(models.Model):
+    game_id = models.CharField('Game ID', primary_key=True, max_length=20)
+    season = models.CharField('Season', max_length=30)
+    game_date = models.DateField('Game date')
+    tip_time_est = models.CharField('Tip time (ET)', max_length=40, blank=True)
+    status = models.IntegerField('Game status code', null=True, blank=True)
+    status_text = models.CharField('Game status text', max_length=40, blank=True)
+    arena_name = models.CharField('Arena', max_length=120, blank=True)
+    arena_city = models.CharField('Arena city', max_length=80, blank=True)
+    home_team = models.ForeignKey(
+        Team, on_delete=models.CASCADE, related_name='home_games'
+    )
+    away_team = models.ForeignKey(
+        Team, on_delete=models.CASCADE, related_name='away_games'
+    )
+    home_score = models.IntegerField('Home score', null=True, blank=True)
+    away_score = models.IntegerField('Away score', null=True, blank=True)
+
+    class Meta:
+        ordering = ['game_date', 'tip_time_est', 'game_id']
+
+    def __str__(self):
+        return f'{self.away_team_id} at {self.home_team_id} ({self.game_date})'

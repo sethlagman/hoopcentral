@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Player, Team, Statistic, Standing
+from .models import Game, Player, Team, Statistic, Standing
 
 class PlayerSerializer(serializers.ModelSerializer):
 
@@ -66,4 +66,32 @@ class StandingSerializer(serializers.ModelSerializer):
             "last10",
             "overtime",
             "winstreak",
+        )
+
+
+class GameSerializer(serializers.ModelSerializer):
+    home_team_name = serializers.CharField(source="home_team.full_name", read_only=True)
+    away_team_name = serializers.CharField(source="away_team.full_name", read_only=True)
+    home_tricode = serializers.CharField(source="home_team.abbreviation", read_only=True)
+    away_tricode = serializers.CharField(source="away_team.abbreviation", read_only=True)
+
+    class Meta:
+        model = Game
+        fields = (
+            "game_id",
+            "season",
+            "game_date",
+            "tip_time_est",
+            "status",
+            "status_text",
+            "arena_name",
+            "arena_city",
+            "home_team",
+            "home_team_name",
+            "home_tricode",
+            "home_score",
+            "away_team",
+            "away_team_name",
+            "away_tricode",
+            "away_score",
         )
