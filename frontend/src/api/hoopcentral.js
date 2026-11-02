@@ -113,3 +113,14 @@ export function fetchPlayerCareerSummary(playerId) {
 export function fetchSeasonSummary(season) {
   return apiJson(`/season/${encodeURIComponent(season)}/summary`)
 }
+
+/** Season schedule. `date` is YYYY-MM-DD. `team` is a team id or abbreviation. */
+export function fetchSchedule({ season, date, team, limit = 40 } = {}) {
+  const q = new URLSearchParams()
+  if (season?.trim()) q.set('season', season.trim())
+  if (date?.trim()) q.set('date', date.trim())
+  if (team?.trim()) q.set('team', team.trim())
+  if (limit) q.set('limit', String(limit))
+  const qs = q.toString()
+  return apiJson(qs ? `/schedule?${qs}` : '/schedule')
+}
