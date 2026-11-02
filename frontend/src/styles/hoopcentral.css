@@ -1114,6 +1114,15 @@ footer {
   margin: 0;
 }
 
+/* Scores filters sit flush: no gap between fields, and one shared height. */
+#nba-scores-tab .hc-toolbar {
+  gap: 8px;
+}
+
+#nba-scores-tab .hc-input {
+  height: 32px;
+}
+
 .hc-toolbar-meta {
   font-size: 11px;
   color: #666;
