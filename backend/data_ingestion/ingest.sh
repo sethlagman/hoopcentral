@@ -70,10 +70,14 @@ initialize_or_refresh \
 echo "Refreshing team data"
 python /app/data_ingestion/fetcher/get_nba_team.py
 
+echo "Refreshing season schedule"
+python /app/data_ingestion/fetcher/get_nba_schedule.py
+
 echo "Processing raw data"
 python /app/data_ingestion/processer/process_nba_player.py
 python /app/data_ingestion/processer/process_nba_team.py
 python /app/data_ingestion/processer/process_nba_standing.py
+python /app/data_ingestion/processer/process_nba_schedule.py
 
 cd /app/hoopcentral
 python manage.py migrate --noinput
@@ -81,5 +85,6 @@ python manage.py seed_team
 python manage.py seed_standing
 python manage.py seed_player
 python manage.py seed_stat
+python manage.py seed_schedule
 
 echo "Ingestion complete"
