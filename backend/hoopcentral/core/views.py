@@ -7,6 +7,7 @@ at import time (see ``SEASON`` below).
 """
 
 import os
+from datetime import date, datetime
 
 from django.db.models import Avg, Exists, IntegerField, OuterRef, Q
 from django.db.models.functions import Cast
@@ -16,7 +17,7 @@ from rest_framework.decorators import api_view
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from .models import Player, Standing, Statistic, Team
+from .models import Game, Player, Standing, Statistic, Team
 from .season_utils import (
     resolved_season_label,
     resolve_season_start_year,
@@ -24,6 +25,7 @@ from .season_utils import (
     stats_within_career_years,
 )
 from .serializers import (
+    GameSerializer,
     PlayerSerializer,
     StandingSerializer,
     StatisticSerializer,
@@ -175,6 +177,26 @@ def _standing_for_team_season_or_404(team_id, variants):
     if standing is None:
         raise Http404("No Standing matches the given query.")
     return standing
+
+
+def _schedule_team_ids(team_param):
+    """
+    Team ids matching a schedule ``team`` filter.
+
+    ``None`` when ``team_param`` is blank, so the caller applies no team filter.
+    Otherwise a list of ``Team.team_id`` values that match that id or abbreviation
+    (case-insensitive). An empty list means the filter matched no franchise.
+    """
+
+    text = (team_param or "").strip()
+    if not text:
+        return None
+    ids = list(
+        Team.objects.filter(Q(team_id=text) | Q(abbreviation__iexact=text)).values_list(
+            "team_id", flat=True
+        )
+    )
+    return ids
 
 
 @api_view(["GET"])
@@ -546,5 +568,59 @@ def season_summary(request, season):
         {
             "season": resolved_season_label(variants),
             "standings": StandingSerializer(standings, many=True).data,
+        }
+    )
+
+
+@api_view(["GET"])
+def schedule_list(request):
+    """
+    Season games from the stored league schedule.
+
+    Query params: ``season`` (default ``SEASON``), ``date`` (YYYY-MM-DD),
+    ``team`` (team id or abbreviation), ``limit`` (default 40, max 200).
+    With no date, returns games from today forward. If that window is empty,
+    returns the latest games in the season.
+    """
+
+    season = (request.query_params.get("season") or SEASON).strip()
+    variants = season_lookup_variants(season)
+    games = Game.objects.filter(season__in=variants).select_related("home_team", "away_team")
+
+    team_ids = _schedule_team_ids(request.query_params.get("team"))
+    if team_ids is not None:
+        if not team_ids:
+            return Response(
+                {"season": resolved_season_label(variants), "games": [], "count": 0}
+            )
+        games = games.filter(Q(home_team_id__in=team_ids) | Q(away_team_id__in=team_ids))
+
+    date_text = (request.query_params.get("date") or "").strip()
+    if date_text:
+        try:
+            game_day = datetime.strptime(date_text, "%Y-%m-%d").date()
+        except ValueError:
+            return Response({"error": "date must be YYYY-MM-DD"}, status=400)
+        games = games.filter(game_date=game_day).order_by("tip_time_est", "game_id")
+    else:
+        upcoming = games.filter(game_date__gte=date.today()).order_by(
+            "game_date", "tip_time_est", "game_id"
+        )
+        games = upcoming if upcoming.exists() else games.order_by("-game_date", "game_id")
+
+    try:
+        limit = int(request.query_params.get("limit", 40))
+    except ValueError:
+        limit = 40
+    limit = min(max(limit, 1), 200)
+    selected = list(games[:limit])
+    if not date_text and selected and selected[0].game_date < date.today():
+        selected = list(reversed(selected))
+
+    return Response(
+        {
+            "season": resolved_season_label(variants),
+            "games": GameSerializer(selected, many=True).data,
+            "count": len(selected),
         }
     )
