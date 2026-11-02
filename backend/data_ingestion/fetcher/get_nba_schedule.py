@@ -5,11 +5,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from nba_api.stats.endpoints import scheduleleaguev2
+from nba_api.stats.library.http import STATS_HEADERS
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR.parent.parent / '.env')
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
 SEASON = os.environ.get('SEASON', '2025-26')
+
+REQUEST_HEADERS = {**STATS_HEADERS, "Origin": "https://www.nba.com"}
 
 MAX_RETRIES = 5
 RETRY_BACKOFF_BASE = 1.0
@@ -23,7 +26,11 @@ def get_nba_schedule(output_file=OUTPUT_DIR / 'nba_schedule_data.json', season=S
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             print(f"Fetching schedule for {season} (attempt {attempt}/{MAX_RETRIES})...")
-            schedule = scheduleleaguev2.ScheduleLeagueV2(season=season, timeout=60)
+            schedule = scheduleleaguev2.ScheduleLeagueV2(
+                season=season,
+                headers=REQUEST_HEADERS,
+                timeout=60,
+            )
             data = schedule.get_dict()
             break
         except Exception as e:
