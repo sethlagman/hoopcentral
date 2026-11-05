@@ -7,7 +7,7 @@ at import time (see ``SEASON`` below).
 """
 
 import os
-from datetime import date, datetime
+from datetime import datetime
 
 from django.db.models import Avg, Exists, IntegerField, OuterRef, Q
 from django.db.models.functions import Cast
@@ -572,26 +572,55 @@ def season_summary(request, season):
     )
 
 
+def _schedule_page_size(request):
+    """Page length for the schedule list. ``page_size`` wins; ``limit`` is the older name."""
+
+    raw = request.query_params.get("page_size", request.query_params.get("limit", 40))
+    try:
+        size = int(raw)
+    except (TypeError, ValueError):
+        return 40
+    if size < 1:
+        return 40
+    return min(size, 200)
+
+
+def _schedule_page_number(request):
+    raw = request.query_params.get("page", 1)
+    try:
+        page = int(raw)
+    except (TypeError, ValueError):
+        return 1
+    return page if page >= 1 else 1
+
+
 @api_view(["GET"])
 def schedule_list(request):
     """
-    Season games from the stored league schedule.
+    Season games from the stored league schedule, latest date first.
 
     Query params: ``season`` (default ``SEASON``), ``date`` (YYYY-MM-DD),
-    ``team`` (team id or abbreviation), ``limit`` (default 40, max 200).
-    With no date, returns games from today forward. If that window is empty,
-    returns the latest games in the season.
+    ``team`` (team id or abbreviation), ``page`` (default 1),
+    ``page_size`` (default 40, max 200). ``limit`` is accepted as ``page_size``.
     """
 
     season = (request.query_params.get("season") or SEASON).strip()
     variants = season_lookup_variants(season)
+    page_size = _schedule_page_size(request)
+    page = _schedule_page_number(request)
     games = Game.objects.filter(season__in=variants).select_related("home_team", "away_team")
 
     team_ids = _schedule_team_ids(request.query_params.get("team"))
     if team_ids is not None:
         if not team_ids:
             return Response(
-                {"season": resolved_season_label(variants), "games": [], "count": 0}
+                {
+                    "season": resolved_season_label(variants),
+                    "games": [],
+                    "count": 0,
+                    "page": 1,
+                    "page_size": page_size,
+                }
             )
         games = games.filter(Q(home_team_id__in=team_ids) | Q(away_team_id__in=team_ids))
 
@@ -601,26 +630,24 @@ def schedule_list(request):
             game_day = datetime.strptime(date_text, "%Y-%m-%d").date()
         except ValueError:
             return Response({"error": "date must be YYYY-MM-DD"}, status=400)
-        games = games.filter(game_date=game_day).order_by("tip_time_est", "game_id")
-    else:
-        upcoming = games.filter(game_date__gte=date.today()).order_by(
-            "game_date", "tip_time_est", "game_id"
-        )
-        games = upcoming if upcoming.exists() else games.order_by("-game_date", "game_id")
+        games = games.filter(game_date=game_day)
 
-    try:
-        limit = int(request.query_params.get("limit", 40))
-    except ValueError:
-        limit = 40
-    limit = min(max(limit, 1), 200)
-    selected = list(games[:limit])
-    if not date_text and selected and selected[0].game_date < date.today():
-        selected = list(reversed(selected))
+    games = games.order_by("-game_date", "-game_id")
+    total = games.count()
+    if total:
+        last_page = (total + page_size - 1) // page_size
+        page = min(page, last_page)
+    else:
+        page = 1
+    start = (page - 1) * page_size
+    selected = list(games[start : start + page_size])
 
     return Response(
         {
             "season": resolved_season_label(variants),
             "games": GameSerializer(selected, many=True).data,
-            "count": len(selected),
+            "count": total,
+            "page": page,
+            "page_size": page_size,
         }
     )

@@ -46,11 +46,15 @@ function groupByDate(games) {
   return groups
 }
 
+const SCHEDULE_PAGE_SIZE = 40
+
 export default function NbaScoresSection({ activeId }) {
   const visible = activeId === 'nba-scores-tab'
   const [season, setSeason] = useState(DEFAULT_NBA_SEASON)
   const [date, setDate] = useState('')
   const [team, setTeam] = useState('')
+  const [page, setPage] = useState(1)
+  const [count, setCount] = useState(0)
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -60,9 +64,12 @@ export default function NbaScoresSection({ activeId }) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetchSchedule({ season, date, team, limit: date ? 30 : 40 })
+    fetchSchedule({ season, date, team, page, pageSize: SCHEDULE_PAGE_SIZE })
       .then((payload) => {
-        if (!cancelled) setGames(payload?.games ?? [])
+        if (!cancelled) {
+          setGames(payload?.games ?? [])
+          setCount(payload?.count ?? 0)
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message || String(err))
@@ -73,11 +80,12 @@ export default function NbaScoresSection({ activeId }) {
     return () => {
       cancelled = true
     }
-  }, [visible, season, date, team])
+  }, [visible, season, date, team, page])
 
   if (!visible) return null
 
   const groups = groupByDate(games)
+  const totalPages = Math.max(1, Math.ceil(count / SCHEDULE_PAGE_SIZE))
 
   return (
     <SubPanel id="nba-scores-tab" activeId={activeId}>
@@ -85,24 +93,54 @@ export default function NbaScoresSection({ activeId }) {
       <div className="table-wrap">
         <div className="table-head">
           <div className="table-head-title">Season schedule</div>
+          <HcToolbar>
+            <span className="hc-toolbar-meta">
+              Page {page} of {totalPages} · {count} games
+            </span>
+            <button
+              type="button"
+              className="hc-btn hc-btn-ghost"
+              disabled={loading || page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              className="hc-btn hc-btn-ghost"
+              disabled={loading || page >= totalPages}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              Next
+            </button>
+          </HcToolbar>
         </div>
         <HcToolbar>
           <input
             className="hc-input"
             value={season}
-            onChange={(e) => setSeason(e.target.value)}
+            onChange={(e) => {
+              setSeason(e.target.value)
+              setPage(1)
+            }}
             placeholder="Season (2025-26)"
           />
           <input
             className="hc-input"
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => {
+              setDate(e.target.value)
+              setPage(1)
+            }}
           />
           <input
             className="hc-input hc-input-narrow"
             value={team}
-            onChange={(e) => setTeam(e.target.value)}
+            onChange={(e) => {
+              setTeam(e.target.value)
+              setPage(1)
+            }}
             placeholder="Team (CLE)"
           />
         </HcToolbar>

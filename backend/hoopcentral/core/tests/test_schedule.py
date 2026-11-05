@@ -41,6 +41,20 @@ class ScheduleViewTests(TestCase):
             home_score=0,
             away_score=0,
         )
+        Game.objects.create(
+            game_id="0022500100",
+            season="2025-26",
+            game_date=date(2026, 4, 12),
+            tip_time_est="3:30 pm ET",
+            status=3,
+            status_text="Final",
+            arena_name="Madison Square Garden",
+            arena_city="New York",
+            home_team=away,
+            away_team=home,
+            home_score=101,
+            away_score=99,
+        )
 
     def test_filter_by_date(self):
         response = self.client.get("/api/schedule?season=2025-26&date=2025-10-22")
@@ -63,3 +77,20 @@ class ScheduleViewTests(TestCase):
     def test_bad_date(self):
         response = self.client.get("/api/schedule?date=10-22-2025")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_latest_game_is_first(self):
+        response = self.client.get("/api/schedule?season=2025-26")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        self.assertEqual(body["count"], 2)
+        self.assertEqual(body["page"], 1)
+        self.assertEqual(body["games"][0]["game_id"], "0022500100")
+        self.assertEqual(body["games"][1]["game_id"], "0022500001")
+
+    def test_page_size_walks_older_games(self):
+        first = self.client.get("/api/schedule?season=2025-26&page_size=1&page=1")
+        second = self.client.get("/api/schedule?season=2025-26&page_size=1&page=2")
+        self.assertEqual(first.json()["games"][0]["game_id"], "0022500100")
+        self.assertEqual(first.json()["count"], 2)
+        self.assertEqual(second.json()["games"][0]["game_id"], "0022500001")
+        self.assertEqual(second.json()["page"], 2)

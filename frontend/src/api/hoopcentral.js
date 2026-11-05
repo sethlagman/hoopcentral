@@ -114,13 +114,14 @@ export function fetchSeasonSummary(season) {
   return apiJson(`/season/${encodeURIComponent(season)}/summary`)
 }
 
-/** Season schedule. `date` is YYYY-MM-DD. `team` is a team id or abbreviation. */
-export function fetchSchedule({ season, date, team, limit = 40 } = {}) {
+/** Season schedule, latest game first. `date` is YYYY-MM-DD. `team` is a team id or abbreviation. */
+export function fetchSchedule({ season, date, team, page = 1, pageSize = 40 } = {}) {
   const q = new URLSearchParams()
   if (season?.trim()) q.set('season', season.trim())
   if (date?.trim()) q.set('date', date.trim())
   if (team?.trim()) q.set('team', team.trim())
-  if (limit) q.set('limit', String(limit))
+  if (page) q.set('page', String(page))
+  if (pageSize) q.set('page_size', String(pageSize))
   const qs = q.toString()
   return apiJson(qs ? `/schedule?${qs}` : '/schedule')
 }
