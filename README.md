@@ -17,6 +17,7 @@ This is still an ongoing project. The backend is complete and ready for use, wit
 - **Player Data**: Retrieve player information including names, jersey numbers, team affiliations, and headshots
 - **Player Statistics**: Get player statistics (points, rebounds, assists per game) by season
 - **Team Standings**: Access team standings including wins, losses, win rates, conference records, and more
+- **Season Schedule**: Stored NBA games, served by the API and shown on the Scores & schedule tab. Results are paged, latest game first
 - **Historical Data**: Support for historical player and standing data across multiple seasons
 - **RESTful API**: Clean, intuitive REST endpoints following best practices
 
@@ -39,6 +40,7 @@ hoopcentral/
 │   │   ├── hoopcentral/     # Settings, URLs, WSGI
 │   │   └── manage.py
 │   └── data_ingestion/      # Data fetching and processing scripts
+│       ├── ingest.sh        # One-shot pipeline used by the Compose ingest service
 │       ├── fetcher/         # Fetch raw data from NBA API
 │       ├── processer/       # Process raw → structured JSON
 │       └── output/          # raw/ and processed/ JSON
@@ -58,14 +60,14 @@ hoopcentral/
 
 ## 🐳 Docker
 
-To run the backend and PostgreSQL with Docker, see **[DOCKER.md](DOCKER.md)** for configuration and commands.
+Docker Compose runs Postgres, the API, the Vite frontend, and a one-shot ingest job. See **[DOCKER.md](DOCKER.md)** for configuration and commands. Rebuild the backend image only after `backend/Dockerfile` or `backend/requirements.txt` changes. Local Python edits are bind-mounted and picked up by Gunicorn `--reload`.
 
 ## 🚀 Installation & Setup
 
 ### Prerequisites
 
-- **Backend**: Python 3.12+, PostgreSQL, pip
-- **Frontend**: Node.js 18+, npm
+- **Backend**: Python 3.13, PostgreSQL, pip. The Docker image is `python:3.13-slim`
+- **Frontend**: Node.js 20, npm. The Docker frontend image is `node:20-alpine`
 
 ### Step 1: Clone the Repository
 
@@ -100,6 +102,8 @@ END_YEAR=2025
 SEASON=2025-26
 ```
 
+Docker Compose overrides `DB_HOST=db` and `DB_PORT=5432` inside the backend network. Postgres is published on the host as **5433**, so a client on the machine connects to `localhost:5433`.
+
 ### Step 4: Database & Migrations
 
 1. Create PostgreSQL database: `CREATE DATABASE hoopcentral;`
@@ -119,7 +123,7 @@ npm run dev
 npm run build
 ```
 
-Point requests at Django server (e.g. `http://localhost:8000`). Use `import.meta.env.VITE_API_URL` if you add it to `.env`.
+The frontend calls Django at `VITE_API_URL`. That value must include `/api` (Compose sets `http://localhost:8000/api`). The NBA Scores & schedule tab uses `GET /api/schedule`.
 
 ### Step 6: Create Superuser (Optional)
 
@@ -130,7 +134,15 @@ python manage.py createsuperuser
 
 ## 📊 Data Ingestion Workflow
 
-The project includes a complete data ingestion pipeline to fetch and process NBA data:
+The project includes a complete data ingestion pipeline to fetch and process NBA data. With Docker, run it as its own one-shot service. It is not part of the API process, so a long fetch does not block Gunicorn and an API restart does not rerun the pipeline:
+
+```bash
+docker compose run --rm ingest
+```
+
+That runs `backend/data_ingestion/ingest.sh`. If `nba_player_data.json` or `nba_standing_data.json` is missing, the matching historical fetcher runs, then the historical file is renamed to the standard name. If those files already exist, only the current-season player and standing scripts run. Teams and the season schedule refresh on every run. The script then processes, migrates, and seeds in this order: team, standing, player, stat, schedule. `seed_stat` writes one row at a time and prints nothing until it finishes, so the log can sit quiet after "NBA players seeded successfully" while `seed_schedule` is still waiting.
+
+`stats.nba.com` drops the response body when a request looks like a bot, which shows up as a read timeout. Player, standing, and historical fetchers send a Chrome 140 `User-Agent` and `Origin: https://www.nba.com`. The schedule fetcher uses `nba_api` headers and adds that same `Origin`, because passing `headers` replaces the library defaults. Team data comes from a list shipped inside `nba_api` and does not call `stats.nba.com`.
 
 ### 1. Fetch Raw Data
 
@@ -141,6 +153,7 @@ cd backend
 python data_ingestion/fetcher/get_nba_player.py
 python data_ingestion/fetcher/get_nba_team.py
 python data_ingestion/fetcher/get_nba_standing.py
+python data_ingestion/fetcher/get_nba_schedule.py
 python data_ingestion/fetcher/get_nba_historical_player.py
 python data_ingestion/fetcher/get_nba_historical_standing.py
 ```
@@ -154,6 +167,7 @@ cd backend
 python data_ingestion/processer/process_nba_player.py
 python data_ingestion/processer/process_nba_team.py
 python data_ingestion/processer/process_nba_standing.py
+python data_ingestion/processer/process_nba_schedule.py
 ```
 
 Processed data is saved to `backend/data_ingestion/output/processed/`.
@@ -163,17 +177,11 @@ Processed data is saved to `backend/data_ingestion/output/processed/`.
 ```bash
 cd backend/hoopcentral
 
-# Seed teams (must be done first)
 python manage.py seed_team
-
-# Seed players
-python manage.py seed_player
-
-# Seed statistics
-python manage.py seed_stat
-
-# Seed standings
 python manage.py seed_standing
+python manage.py seed_player
+python manage.py seed_stat
+python manage.py seed_schedule
 ```
 
 ## 🌐 API Endpoints
@@ -272,6 +280,44 @@ All API endpoints are prefixed with `/api/`.
 - **GET `/api/standing/<team_id>/<season>`** - Get standings for a team in a specific season
   - Example: `/api/standing/1610612737/2024-25`
 
+### Schedule
+
+- **GET `/api/schedule`** - Season games stored in Postgres, latest date first
+  - `season` defaults to the `SEASON` env value (for example `2025-26`)
+  - `date` is `YYYY-MM-DD`
+  - `team` is a team id or abbreviation (`BOS`)
+  - `page` defaults to 1
+  - `page_size` defaults to 40 and maxes at 200. `limit` is accepted as the same value
+  - `count` is the total number of matches, not the size of this page
+  ```json
+  {
+    "season": "2025-26",
+    "count": 1400,
+    "page": 1,
+    "page_size": 40,
+    "games": [
+      {
+        "game_id": "0042500405",
+        "season": "2025-26",
+        "game_date": "2026-06-13",
+        "tip_time_est": "1900-01-01T20:30:00Z",
+        "status": 3,
+        "status_text": "Final",
+        "arena_name": "Frost Bank Center",
+        "arena_city": "San Antonio",
+        "home_team": "1610612759",
+        "home_team_name": "San Antonio Spurs",
+        "home_tricode": "SAS",
+        "home_score": 90,
+        "away_team": "1610612752",
+        "away_team_name": "New York Knicks",
+        "away_tricode": "NYK",
+        "away_score": 94
+      }
+    ]
+  }
+  ```
+
 ## 💻 Usage Examples
 
 ### Using cURL
@@ -288,6 +334,12 @@ curl http://localhost:8000/api/statistic/1629029/2024-25
 
 # Get team standings for a season
 curl http://localhost:8000/api/standing/1610612737/2024-25
+
+# Latest page of the 2025-26 schedule
+curl "http://localhost:8000/api/schedule?season=2025-26&page=1&page_size=40"
+
+# One team
+curl "http://localhost:8000/api/schedule?season=2025-26&team=BOS"
 ```
 
 ### Using Python requests
@@ -389,6 +441,20 @@ npm run dev
 - `overtime`
 - `winstreak`
 
+### Game
+- `game_id` (Primary Key)
+- `season`
+- `game_date`
+- `tip_time_est`
+- `status`
+- `status_text`
+- `arena_name`
+- `arena_city`
+- `home_team` (ForeignKey to Team)
+- `away_team` (ForeignKey to Team)
+- `home_score`
+- `away_score`
+
 ## 🔧 Development
 
 ### Running Tests
@@ -396,6 +462,19 @@ npm run dev
 ```bash
 cd backend/hoopcentral
 python manage.py test
+```
+
+Schedule tests can run without Postgres:
+
+```bash
+cd backend/hoopcentral
+DJANGO_SETTINGS_MODULE=hoopcentral.settings_test python manage.py test core.tests.test_schedule
+```
+
+Inside the backend container:
+
+```bash
+docker exec -w /app/hoopcentral -e DJANGO_SETTINGS_MODULE=hoopcentral.settings_test hoopcentral-backend python manage.py test core.tests.test_schedule
 ```
 
 ### Creating Migrations
