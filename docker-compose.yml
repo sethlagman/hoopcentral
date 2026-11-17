@@ -5,32 +5,27 @@
 # Logs:   docker compose logs -f backend
 
 services:
-  # PostgreSQL Database
   db:
     image: postgres:16-alpine
     container_name: hoopcentral-db
-    # Restart on failure (useful for production)
     restart: unless-stopped
-    # Environment variables for PostgreSQL - uses same values as .env (variable substitution)
+    # Same values as .env, via variable substitution.
     environment:
       POSTGRES_DB: ${DB_NAME:-hoopcentral}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    # Persist database data - survives container restarts
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # Expose port for debugging or external tools (optional - backend uses internal network)
-    # Use 5433 on host to avoid conflict with local PostgreSQL on 5432
+    # Only for external tools; the backend uses the internal network.
+    # 5433 avoids clashing with a local PostgreSQL on 5432.
     ports:
       - "5433:5432"
-    # Health check ensures database is ready before backend starts
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # Django Backend
   backend:
     build:
       context: ./backend
@@ -38,18 +33,15 @@ services:
     image: hoopcentral-backend
     container_name: hoopcentral-backend
     restart: unless-stopped
-    # Load env vars from .env file (DB_NAME, SECRET_KEY, etc.)
     env_file: .env
-    # Override DB connection for Docker network - backend connects to 'db' service
     environment:
       DB_HOST: db
       DB_PORT: "5432"
-      # Allow Docker host for ALLOWED_HOSTS (add your domain in production)
+      # Add your domain in production.
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
     # Host source covers the code copied at build time. Installed packages stay in the image.
     volumes:
       - ./backend:/app
-    # Expose Django on port 8000 - access at http://localhost:8000
     ports:
       - "8000:8000"
     # --reload restarts workers when mounted Python files change
@@ -57,8 +49,7 @@ services:
       sh -c "python manage.py migrate --noinput &&
              python -m gunicorn --bind 0.0.0.0:8000 --workers 1 --reload hoopcentral.wsgi:application"
 
-  # Data ingestion (one-shot)
-  # On Live Deployment, run this script as a separate task, not as the web service command.
+  # One-shot job. In production, run it as a separate task, not from the web service.
   ingest:
     build:
       context: ./backend
@@ -77,24 +68,21 @@ services:
         condition: service_healthy
     command: sh /app/data_ingestion/ingest.sh
 
-  # React Frontend (development with hot reload)
   frontend:
     image: node:20-alpine
     container_name: hoopcentral-frontend
     working_dir: /app
-    # Mount source for hot reload - no image build needed for dev
     volumes:
       - ./frontend:/app
       - /app/node_modules  # Prevent host node_modules from overwriting container's
     ports:
       - "5173:5173"
     environment:
-      # Must include /api — same as resolveApiRoot(); browser calls host:8000 from the machine
+      # Must include /api (see resolveApiRoot). The browser reaches the API via the host's port 8000.
       VITE_API_URL: http://localhost:8000/api
     command: sh -c "npm install && npm run dev"
     # profiles:
     #   - frontend  # Only start with: docker compose --profile frontend up
 
-# Named volumes - persistent storage for database
 volumes:
   postgres_data:
