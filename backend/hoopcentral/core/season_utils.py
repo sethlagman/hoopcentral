@@ -36,7 +36,6 @@ def season_lookup_variants(season_param):
 
 
 def resolve_season_start_year(season_param, variants):
-    """League start calendar year for the requested season (see season_start_year)."""
     for v in variants:
         y = season_start_year(v)
         if y is not None:
@@ -46,9 +45,8 @@ def resolve_season_start_year(season_param, variants):
 
 def stats_within_career_years(queryset, year_start, year_end):
     """
-    Statistic rows whose season's league start year is in [year_start, year_end]
-    (inclusive). Uses the same season-year rules as season_start_year.
-    If years are not valid integers, returns queryset ordered by season unchanged.
+    Statistic rows whose season start year is in [year_start, year_end], inclusive.
+    A bound that is not an integer is ignored; if both are invalid, nothing is filtered.
     """
     try:
         ymin = int(str(year_start).strip())

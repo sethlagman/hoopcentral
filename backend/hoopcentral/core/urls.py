@@ -23,13 +23,11 @@ from .views import (
 )
 
 urlpatterns = [
-    # Base collections
     path("player", player_list, name="player"),
     path("team", team_list, name="team"),
     path("standing", standing_list, name="standing"),
     path("statistic", statistic_list, name="statistic"),
 
-    # IDs and detail
     path("player/<str:player_id>", player_id, name="player_id"),
     path("team/<str:team_id>", team_id, name="team_id"),
     path("statistic/<str:player_id>", player_statistic, name="player_statistic"),
@@ -45,7 +43,6 @@ urlpatterns = [
         name="team_standing_season",
     ),
 
-    # Search and leaders
     path("player/search/", player_search, name="player_search"),
     path(
         "leaders/<str:season>/<str:stat_category>",
@@ -53,7 +50,6 @@ urlpatterns = [
         name="stat_leaders",
     ),
     
-    # Comparison and summary
     path(
         "team/compare/<str:team_id_1>/<str:team_id_2>/<str:season>",
         team_compare,
