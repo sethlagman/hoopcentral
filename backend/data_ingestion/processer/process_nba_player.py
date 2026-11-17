@@ -16,13 +16,6 @@ def get_nba_player_image_url(player_id: str, url: str = PLAYER_HEADSHOTS) -> str
 
 
 def process_nba_player(raw_file=RAW_DIR / 'nba_player_data.json'):
-    """
-    Extract necessary player info and stat from the json file
-
-    :param raw_file: Path for json player data
-    :type raw_file: Class
-    """
-
     with open(raw_file, 'r') as f:
         player_data = json.load(f)
 

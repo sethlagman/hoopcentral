@@ -6,13 +6,6 @@ RAW_DIR = BASE_DIR / 'output' / 'raw'
 PROCESSED_DIR = BASE_DIR / 'output' / 'processed'
 
 def process_nba_standing(raw_file=RAW_DIR / 'nba_standing_data.json'):
-    """
-    Extract necessary standing info from the json file
-
-    :param raw_file: Path for json team standing data
-    :type raw_file: Class
-    """
-
     with open(raw_file, 'r') as f:
         standing_data = json.load(f)
 

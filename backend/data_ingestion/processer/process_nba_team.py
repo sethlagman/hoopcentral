@@ -6,26 +6,10 @@ RAW_DIR = BASE_DIR / 'output' / 'raw'
 PROCESSED_DIR = BASE_DIR / 'output' / 'processed'
 
 def get_nba_team_image_url(team_id: str) -> str:
-    """
-    Returns API url for team logo
-
-    :param team_id: Description
-    :type team_id: str
-    :return: Description
-    :rtype: str
-    """
-
     return f'https://cdn.nba.com/logos/nba/{team_id}/primary/L/logo.svg'
 
 
 def process_nba_team(raw_file=RAW_DIR / 'nba_team_data.json'):
-    """
-    Processes team data and adds key-value pair for team logo URL
-
-    :param raw_file: Path for json team data
-    :type raw_file: Class
-    """
-
     with open(raw_file, 'r') as f:
         team_data = json.load(f)
 
