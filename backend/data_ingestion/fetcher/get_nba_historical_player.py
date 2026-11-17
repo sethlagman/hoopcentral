@@ -12,16 +12,11 @@ except ImportError:
     from http_utils import get_with_retry
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR.parent.parent / '.env')  # Project root .env
+load_dotenv(BASE_DIR.parent.parent / '.env')
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
 API_URL = 'https://stats.nba.com/stats/playerindex'
 
 def get_nba_player_for_season(output_file, season):
-    """
-    Scrape player index data from NBA stats API for a specific season.
-    """
-
-    # Query parameters
     params = {
         'College': '',
         'Country': '',
@@ -37,7 +32,7 @@ def get_nba_player_for_season(output_file, season):
         'Weight': ''
     }
 
-    # Headers to mimic a browser request from nba.com/players
+    # stats.nba.com tends to hang on requests without browser-like headers.
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
         'Referer': 'https://www.nba.com/players',
@@ -57,7 +52,6 @@ def get_nba_player_for_season(output_file, season):
 
         data = response.json()
 
-        # Create output directory if it doesn't exist
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         overall_data = {}
@@ -82,9 +76,7 @@ def get_nba_player_for_season(output_file, season):
 
 
 def fetch_all_nba_historical_players():
-    """
-    Loops through all seasons from 1996-97 to 2025-26 and fetches data.
-    """
+    """Fetch every season from 1996-97 through ``END_YEAR`` (default: last calendar year)."""
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_path = OUTPUT_DIR / 'nba_historical_player_data.json'

@@ -10,26 +10,16 @@ except ImportError:
     from http_utils import get_with_retry
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR.parent.parent / '.env')  # Project root .env
+load_dotenv(BASE_DIR.parent.parent / '.env')
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
 API_URL = 'https://stats.nba.com/stats/leaguestandingsv3'
 SEASON = os.environ.get('SEASON', '2025-26')
 
 def get_nba_standing(output_file=OUTPUT_DIR / 'nba_standing_data.json', season=SEASON):
-    """
-    Scrape league standings data from NBA stats API.
+    """Fetch leaguestandingsv3 for ``season`` and merge it into ``output_file`` keyed by season."""
 
-    This function accesses the leaguestandingsv3 endpoint that nba.com uses
-    to fetch league standings data. It mimics a browser request with proper headers.
-
-    :param output_file: Path to save the JSON response
-    :type output_file: str
-    """
-
-    # API endpoint URL
     url = API_URL
 
-    # Query parameters
     params = {
         'GroupBy': 'conf',
         'LeagueID': '00',
@@ -38,7 +28,7 @@ def get_nba_standing(output_file=OUTPUT_DIR / 'nba_standing_data.json', season=S
         'Section': 'overall'
     }
 
-    # Headers to mimic a browser request from nba.com
+    # stats.nba.com tends to hang on requests without browser-like headers.
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
         'Referer': 'https://www.nba.com/',
@@ -56,10 +46,8 @@ def get_nba_standing(output_file=OUTPUT_DIR / 'nba_standing_data.json', season=S
         print(f"Fetching data from {url}...")
         response = get_with_retry(url, params=params, headers=headers)
 
-        # Parse JSON response
         data = response.json()
 
-        # Create output directory if it doesn't exist
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         overall_data = {}

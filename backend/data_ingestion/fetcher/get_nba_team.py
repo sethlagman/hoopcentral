@@ -12,10 +12,7 @@ RETRY_BACKOFF_FACTOR = 2.0
 
 
 def get_nba_team(output_file=OUTPUT_DIR / 'nba_team_data.json'):
-    """
-    Requests static team data from NBA API Python library.
-    Retries on timeout/connection errors with exponential backoff.
-    """
+    """Save the static team list from ``nba_api``, retrying with exponential backoff."""
 
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -34,7 +31,6 @@ def get_nba_team(output_file=OUTPUT_DIR / 'nba_team_data.json'):
         print(f"Error fetching team data: {last_error}")
         raise last_error
 
-    # Create output directory if it doesn't exist
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     try:

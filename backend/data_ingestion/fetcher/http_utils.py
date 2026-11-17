@@ -1,20 +1,15 @@
-"""
-Shared HTTP utilities for API fetchers.
-Provides retry logic for timeouts, connection errors, and transient server errors.
-"""
+"""GET with retries for the stats.nba.com fetchers."""
 import time
 import requests
 
-# Defaults: longer timeout and retries to handle flaky API calls
+# stats.nba.com is slow and drops connections often.
 DEFAULT_TIMEOUT = 45
 DEFAULT_MAX_RETRIES = 5
 DEFAULT_BACKOFF_BASE = 1.0
 DEFAULT_BACKOFF_FACTOR = 2.0
 
-# HTTP status codes that are worth retrying (transient errors)
 RETRYABLE_STATUS_CODES = {408, 429, 500, 502, 503, 504}
 
-# Exception types that trigger a retry
 RETRYABLE_EXCEPTIONS = (
     requests.exceptions.Timeout,
     requests.exceptions.ConnectionError,
@@ -35,18 +30,13 @@ def get_with_retry(
     raise_for_status=True,
 ):
     """
-    Perform a GET request with retries on timeout, connection errors, and 5xx/429.
+    GET with retries on timeouts, connection errors, 429, and 5xx.
 
-    :param url: Request URL
-    :param params: Optional query params dict
-    :param headers: Optional headers dict
-    :param timeout: Request timeout in seconds
-    :param max_retries: Number of attempts (including the first)
-    :param backoff_base: Initial delay in seconds before first retry
-    :param backoff_factor: Multiplier for delay after each failure
-    :param raise_for_status: If True, call response.raise_for_status() on success
-    :return: Response object
-    :raises: Last request exception if all retries fail
+    :param max_retries: Total attempts, including the first.
+    :param backoff_base: Delay in seconds before the first retry.
+    :param backoff_factor: Delay multiplier after each failure (capped at 60s).
+    :param raise_for_status: When False, retryable status codes are not retried.
+    :raises: The last exception once retries are exhausted.
     """
     params = params or {}
     headers = headers or {}
@@ -98,6 +88,6 @@ def _sleep_before_retry(attempt, max_retries, backoff_base, backoff_factor):
     if attempt >= max_retries:
         return
     delay = backoff_base * (backoff_factor ** (attempt - 1))
-    delay = min(delay, 60)  # Cap at 60 seconds
+    delay = min(delay, 60)
     print(f"Waiting {delay:.1f}s before retry...")
     time.sleep(delay)
