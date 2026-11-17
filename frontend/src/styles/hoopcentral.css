@@ -1105,7 +1105,7 @@ footer {
   font-size: 11px;
   color: #bbb;
 }
-/* ----- API-connected NBA panels (reuse site chrome) ----- */
+/* API-CONNECTED NBA PANELS */
 .hc-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1114,7 +1114,7 @@ footer {
   margin: 0;
 }
 
-/* Scores filters sit flush: no gap between fields, and one shared height. */
+/* Scores filters share one height. */
 #nba-scores-tab .hc-toolbar {
   gap: 8px;
 }
@@ -1140,7 +1140,7 @@ footer {
   color: #111;
 }
 
-/* No focus / click ring (avoid browser default red ring on number inputs, etc.) */
+/* Suppress the browser's default (red on invalid number inputs) focus ring. */
 .hc-input:focus,
 .hc-input:focus-visible,
 .hc-select:focus,
@@ -1155,7 +1155,7 @@ button.hc-btn:focus-visible {
   box-shadow: none;
 }
 
-/** Keep border neutral while focused — overrides UA red on invalid optional number fields */
+/* Keep the border neutral instead of the browser's red on invalid optional number fields. */
 .hc-input:invalid {
   border-color: #d6d6d6;
   box-shadow: none;
@@ -1243,7 +1243,6 @@ button.hc-btn:focus-visible {
   line-height: 1.35;
 }
 
-/* Tighten player stats: less gap outside profile / career cards (keep border) */
 #nba-player-stats .hc-card {
   margin-top: 0;
   margin-bottom: 0;

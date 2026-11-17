@@ -16,7 +16,6 @@ import {
 } from '../../api/hoopcentral.js'
 import { ApiState, HcToolbar } from './ApiUi.jsx'
 
-/** Career stat average display (single decimal place). */
 function formatAvgOneDecimal(v) {
   if (v === null || v === undefined || v === '') return '—'
   const n = Number(v)
@@ -59,8 +58,8 @@ export default function NbaPlayerStatsSection({ activeId }) {
   const [standingsSeason, setStandingsSeason] = useState(null)
   const [stsLoading, setStsLoading] = useState(false)
   const [stsErr, setStsErr] = useState(null)
-  /** Roster / standings sub-panels shown one at a time */
-  const [teamPanel, setTeamPanel] = useState(null) // 'historicalRoster' | 'currentRoster' | 'fullStandings' | 'seasonStandings'
+  // Only one roster/standings panel is open at a time: 'historicalRoster' | 'currentRoster' | 'fullStandings' | 'seasonStandings'
+  const [teamPanel, setTeamPanel] = useState(null)
 
   const [bulk, setBulk] = useState(null)
   const [bulkPage, setBulkPage] = useState(1)

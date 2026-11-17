@@ -1,4 +1,3 @@
-/** Subsection tabs per sport — matches frontend_style/hoopcentral.html */
 export const SUBSECTIONS = {
   home: [],
   nba: [

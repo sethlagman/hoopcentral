@@ -1,7 +1,4 @@
-/**
- * Scoreboard row — same structure as .game-row in reference HTML.
- * badgeClass: 'badge-live' | 'badge-final' | 'badge-upcoming'
- */
+/** badgeClass: 'badge-live' | 'badge-final' | 'badge-upcoming' */
 export default function GameRow({ badgeClass, badgeText, teamRows, info }) {
   return (
     <div className="game-row">
