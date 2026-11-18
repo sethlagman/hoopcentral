@@ -19,6 +19,7 @@ def process_nba_player(raw_file=RAW_DIR / 'nba_player_data.json'):
     with open(raw_file, 'r') as f:
         player_data = json.load(f)
 
+    # rowSet columns are positional; names are in the matching resultSets[0]['headers'].
     total_statistics = []
     for year, data in player_data.items():
         stats_for_year = []
@@ -46,6 +47,7 @@ def process_nba_player(raw_file=RAW_DIR / 'nba_player_data.json'):
                 'first_name': player[2],
                 'team_id': player[4],
                 'jersey': player[10],
+                # ROSTER_STATUS is 1 for players on a current roster and null otherwise.
                 'is_active': 'true' if player[19] is not None else 'false',
                 'headshot': get_nba_player_image_url(player_id=player[0]),
                 'year_start': player[24],

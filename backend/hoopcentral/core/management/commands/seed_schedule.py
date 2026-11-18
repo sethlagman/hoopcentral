@@ -8,6 +8,7 @@ from core.models import Game, Team
 
 
 def _team(team_id, full_name, abbreviation):
+    # Schedule includes non-franchise teams (All-Star games); create them if missing.
     team, _created = Team.objects.get_or_create(
         team_id=str(team_id),
         defaults={

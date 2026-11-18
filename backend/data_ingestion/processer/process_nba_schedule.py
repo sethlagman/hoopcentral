@@ -19,6 +19,7 @@ def _parse_date(value):
     text = str(value or '').strip()
     for fmt in ('%m/%d/%Y %H:%M:%S', '%m/%d/%Y', '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S'):
         try:
+            # gameDateEst looks like 2025-10-02T00:00:00Z; [:19] drops the trailing Z.
             return datetime.strptime(text[:19], fmt).date().isoformat()
         except ValueError:
             continue
@@ -49,6 +50,7 @@ def games_from_schedule(payload, season=None):
                     'game_id': str(game.get('gameId')),
                     'season': season_label,
                     'game_date': _parse_date(date_value),
+                    # gameTimeEst uses a placeholder date, e.g. 1900-01-01T12:00:00Z.
                     'tip_time_est': str(game.get('gameTimeEst') or ''),
                     'status': game.get('gameStatus'),
                     'status_text': str(game.get('gameStatusText') or ''),

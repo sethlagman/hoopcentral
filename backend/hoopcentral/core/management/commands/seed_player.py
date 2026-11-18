@@ -27,6 +27,8 @@ class Command(BaseCommand):
                 team = Team.objects.get(team_id=str(player["team_id"]))
                 
             except Team.DoesNotExist:
+                # Some players belong to defunct franchises that are not in the team list.
+                # Player.team is required, so create a placeholder Team with empty fields.
                 team = Team.objects.create(
                     team_id=str(player["team_id"]),
                     full_name=None,

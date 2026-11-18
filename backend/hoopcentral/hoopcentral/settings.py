@@ -3,7 +3,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-# Load .env from project root (parent of backend/)
+# Load .env from project root (parent of backend/). In the Docker image this
+# resolves to /.env, which does not exist, so Compose's variables apply as-is.
 load_dotenv(BASE_DIR.parent.parent / '.env', override=True)
 
 
