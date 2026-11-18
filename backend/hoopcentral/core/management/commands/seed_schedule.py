@@ -7,23 +7,6 @@ from django.conf import settings
 from core.models import Game, Team
 
 
-def _team(team_id, full_name, abbreviation):
-    # Schedule includes non-franchise teams (All-Star games); create them if missing.
-    team, _created = Team.objects.get_or_create(
-        team_id=str(team_id),
-        defaults={
-            'full_name': full_name or abbreviation or str(team_id),
-            'abbreviation': abbreviation or '',
-            'nickname': None,
-            'city': None,
-            'state': None,
-            'year_founded': None,
-            'logo': None,
-        },
-    )
-    return team
-
-
 class Command(BaseCommand):
     help = 'Seed NBA schedule games into the database'
 
@@ -42,9 +25,15 @@ class Command(BaseCommand):
         with open(file_path, encoding='utf-8') as f:
             games = json.load(f)
 
+        # Run seed_team first; games whose teams are not seeded are skipped, never created.
+        teams = Team.objects.in_bulk()
+        skipped = 0
         for game in games:
-            home = _team(game['home_team_id'], game.get('home_team_name'), game.get('home_tricode'))
-            away = _team(game['away_team_id'], game.get('away_team_name'), game.get('away_tricode'))
+            home = teams.get(str(game['home_team_id']))
+            away = teams.get(str(game['away_team_id']))
+            if home is None or away is None:
+                skipped += 1
+                continue
             Game.objects.update_or_create(
                 game_id=str(game['game_id']),
                 defaults={
@@ -62,4 +51,6 @@ class Command(BaseCommand):
                 },
             )
 
-        self.stdout.write(self.style.SUCCESS(f'NBA schedule seeded successfully'))
+        if skipped:
+            self.stdout.write(self.style.WARNING(f'Skipped {skipped} games with unknown teams'))
+        self.stdout.write(self.style.SUCCESS('NBA schedule seeded successfully'))
