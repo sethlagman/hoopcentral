@@ -1,10 +1,34 @@
+import importlib.util
 from datetime import date
 
-from django.test import TestCase
+from django.conf import settings
+from django.test import SimpleTestCase, TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from core.models import Game, Team
+
+
+def _load_schedule_processor():
+    path = settings.BASE_DIR.parent / "data_ingestion" / "processer" / "process_nba_schedule.py"
+    spec = importlib.util.spec_from_file_location("process_nba_schedule", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _schedule_game(game_id, away, home, status_text="Final"):
+    return {
+        "gameId": game_id,
+        "gameDateEst": "2025-10-04T00:00:00Z",
+        "gameTimeEst": "1900-01-01T19:30:00Z",
+        "gameStatus": 3,
+        "gameStatusText": status_text,
+        "arenaName": "Arena",
+        "arenaCity": "City",
+        "awayTeam": {"teamId": away[0], "teamCity": away[1], "teamName": away[2], "teamTricode": away[3], "score": 100},
+        "homeTeam": {"teamId": home[0], "teamCity": home[1], "teamName": home[2], "teamTricode": home[3], "score": 101},
+    }
 
 
 def _team(team_id, name, abbreviation):
@@ -94,3 +118,35 @@ class ScheduleViewTests(TestCase):
         self.assertEqual(first.json()["count"], 2)
         self.assertEqual(second.json()["games"][0]["game_id"], "0022500001")
         self.assertEqual(second.json()["page"], 2)
+
+
+class GamesFromScheduleTests(SimpleTestCase):
+    def setUp(self):
+        self.processor = _load_schedule_processor()
+
+    def test_keeps_only_nba_vs_nba_games(self):
+        celtics = (1610612738, "Boston", "Celtics", "BOS")
+        knicks = (1610612752, "New York", "Knicks", "NYK")
+        melbourne = (15016, "Melbourne", "United", "MEL")
+        stars = (1610616859, "", "Stars", "STR")
+        stripes = (1610616860, "", "Stripes", "STP")
+        payload = {
+            "leagueSchedule": {
+                "seasonYear": "2025-26",
+                "gameDates": [
+                    {
+                        "gameDate": "10/04/2025 00:00:00",
+                        "games": [
+                            _schedule_game("0022500001", knicks, celtics, "Final      "),
+                            _schedule_game("0012500009", melbourne, celtics),
+                            _schedule_game("0032500021", stars, stripes),
+                        ],
+                    }
+                ],
+            }
+        }
+
+        games = self.processor.games_from_schedule(payload, season="2025-26")
+
+        self.assertEqual([g["game_id"] for g in games], ["0022500001"])
+        self.assertEqual(games[0]["status_text"], "Final")
