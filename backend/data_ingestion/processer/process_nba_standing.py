@@ -9,6 +9,7 @@ def process_nba_standing(raw_file=RAW_DIR / 'nba_standing_data.json'):
     with open(raw_file, 'r') as f:
         standing_data = json.load(f)
 
+    # rowSet columns are positional; names are in the matching resultSets[0]['headers'].
     standings = []
 
     for year, data in standing_data.items():
@@ -31,7 +32,7 @@ def process_nba_standing(raw_file=RAW_DIR / 'nba_standing_data.json'):
                 'road': standing[19],
                 'last10': standing[20],
                 'overtime': standing[23],
-                'winstreak': standing[32],
+                'winstreak': standing[36],
             }
 
             year_data[year].append(standing_dict)
