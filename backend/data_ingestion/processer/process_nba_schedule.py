@@ -3,6 +3,8 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from nba_api.stats.static import teams
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_DIR = BASE_DIR / 'output' / 'raw'
 PROCESSED_DIR = BASE_DIR / 'output' / 'processed'
@@ -34,9 +36,19 @@ def _score(value):
     return int(value)
 
 
-def games_from_schedule(payload, season=None):
-    """Turn a ScheduleLeagueV2 response into a flat list of game dicts."""
+def nba_team_ids():
+    return {str(team['id']) for team in teams.get_teams()}
 
+
+def games_from_schedule(payload, season=None, team_ids=None):
+    """
+    Turn a ScheduleLeagueV2 response into a flat list of game dicts.
+
+    Only games between two NBA franchises are kept. The schedule also lists
+    All-Star events and preseason games against overseas clubs.
+    """
+
+    team_ids = nba_team_ids() if team_ids is None else {str(t) for t in team_ids}
     schedule = payload.get('leagueSchedule') or payload
     season_label = _season_label(schedule.get('seasonYear'), season)
     games = []
@@ -44,6 +56,8 @@ def games_from_schedule(payload, season=None):
         for game in game_date.get('games') or []:
             home = game.get('homeTeam') or {}
             away = game.get('awayTeam') or {}
+            if str(home.get('teamId')) not in team_ids or str(away.get('teamId')) not in team_ids:
+                continue
             date_value = game.get('gameDateEst') or game_date.get('gameDate')
             games.append(
                 {
@@ -53,7 +67,7 @@ def games_from_schedule(payload, season=None):
                     # gameTimeEst uses a placeholder date, e.g. 1900-01-01T12:00:00Z.
                     'tip_time_est': str(game.get('gameTimeEst') or ''),
                     'status': game.get('gameStatus'),
-                    'status_text': str(game.get('gameStatusText') or ''),
+                    'status_text': str(game.get('gameStatusText') or '').strip(),
                     'arena_name': str(game.get('arenaName') or ''),
                     'arena_city': str(game.get('arenaCity') or ''),
                     'home_team_id': str(home.get('teamId')),
