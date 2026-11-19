@@ -6,6 +6,11 @@ on:
     branches:
       - main
 
+env:
+  DJANGO_SETTINGS_MODULE: hoopcentral.settings_test
+  SECRET_KEY: ci-dummy-key
+  DB_PASSWORD: ci-dummy
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,13 +27,13 @@ jobs:
           pip install -r requirements.txt
       - name: Run tests
         run: |
-          cd backend/hoopcentral/hoopcentral
+          cd backend/hoopcentral
           python manage.py test --noinput
-      - name: Run lint
+      - name: Django system check
         run: |
-          cd backend/hoopcentral/hoopcentral
-          python manage.py lint --noinput
+          cd backend/hoopcentral
+          python manage.py check
       - name: Check migrations
         run: |
-          cd backend/hoopcentral/hoopcentral
+          cd backend/hoopcentral
           python manage.py makemigrations --check --dry-run
