@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 import unicodedata
 
-from django.db.models import Avg, Exists, IntegerField, OuterRef, Q, Value
+from django.db.models import Avg, Exists, F, IntegerField, OuterRef, Q, Value
 from django.db.models.functions import Cast, Lower, Replace
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -37,6 +37,17 @@ STAT_LEADER_FIELDS = {
     "points_per_game": "ppg",
     "assists_per_game": "apg",
     "rebounds_per_game": "rpg",
+}
+
+STAT_LIST_ORDERING = {
+    "ppg": "ppg",
+    "-ppg": "ppg",
+    "rpg": "rpg",
+    "-rpg": "rpg",
+    "apg": "apg",
+    "-apg": "apg",
+    "player": "player__full_name",
+    "-player": "player__full_name",
 }
 
 
@@ -270,9 +281,43 @@ def team_list(request):
     return Response(serializer.data)
 
 
+def _stat_list_order(key):
+    desc = key.startswith("-")
+    expr = F(STAT_LIST_ORDERING[key])
+    ordered = expr.desc(nulls_last=True) if desc else expr.asc(nulls_last=True)
+    return (ordered, "pk")
+
+
 @api_view(["GET"])
 def statistic_list(request):
-    statistics = Statistic.objects.all().select_related("player").order_by("pk")
+    """
+    Per-game averages. Optional ``season`` (``2025`` or ``2025-26``) and
+    ``ordering`` (``ppg``, ``rpg``, ``apg``, ``player``, each with an optional
+    leading ``-``). Stat sorts place nulls last. A current-season request
+    keeps active players only, matching the leaders endpoint. Older seasons
+    keep players whose career window covers that season.
+    """
+
+    statistics = Statistic.objects.select_related("player", "player__team", "team")
+    season = (request.query_params.get("season") or "").strip()
+    if season:
+        variants = season_lookup_variants(season)
+        statistics = statistics.filter(season__in=variants)
+        if _same_league_campaign_as_env(season):
+            statistics = statistics.filter(player__is_active=True)
+        else:
+            statistics = _statistics_players_active_in_season(
+                statistics,
+                resolve_season_start_year(season, variants),
+            )
+    ordering = (request.query_params.get("ordering") or "").strip()
+    if ordering:
+        if ordering not in STAT_LIST_ORDERING:
+            valid = ", ".join(STAT_LIST_ORDERING)
+            return Response({"error": f"Invalid ordering. Choose from {valid}"}, status=400)
+        statistics = statistics.order_by(*_stat_list_order(ordering))
+    else:
+        statistics = statistics.order_by("pk")
     return _paginated_response(request, statistics, StatisticSerializer)
 
 

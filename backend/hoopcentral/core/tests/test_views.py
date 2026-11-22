@@ -129,6 +129,40 @@ class PlayerAndTeamViewsTests(TestCase):
         r = self.client.get("/api/player?active=maybe")
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_statistic_season_ordering(self):
+        team = _mk_team("700")
+        alpha = _mk_player(team, pid="700-a", full_name="Alpha")
+        beta = _mk_player(team, pid="700-b", full_name="Beta")
+        _mk_stat(alpha, ppg=Decimal("10.0"))
+        _mk_stat(beta, ppg=Decimal("30.0"))
+        _mk_stat(alpha, season="2020-21", ppg=Decimal("99.0"))
+        r = self.client.get("/api/statistic?season=2025-26&ordering=-ppg")
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        rows = r.json()["results"]
+        self.assertEqual([row["player"] for row in rows], ["700-b", "700-a"])
+        self.assertEqual(rows[0]["team_abbreviation"], "TST")
+        self.assertEqual(rows[0]["ppg"], "30.0")
+
+    def test_statistic_bad_ordering(self):
+        r = self.client.get("/api/statistic?ordering=drop")
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_statistic_current_season_excludes_inactive(self):
+        team = _mk_team("701")
+        retired = _mk_player(
+            team,
+            pid="701-r",
+            full_name="Retired Star",
+            is_active=False,
+            year_start="1959",
+            year_end="1972",
+        )
+        _mk_stat(retired, ppg=Decimal("50.0"))
+        active = _mk_player(team, pid="701-a", full_name="Active Star")
+        _mk_stat(active, ppg=Decimal("10.0"))
+        rows = self.client.get("/api/statistic?season=2025-26&ordering=-ppg").json()["results"]
+        self.assertEqual([row["player"] for row in rows], ["701-a"])
+
 
 class StatLeaderTests(TestCase):
     databases = {"default"}

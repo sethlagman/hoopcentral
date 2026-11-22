@@ -31,6 +31,9 @@ class TeamSerializer(serializers.ModelSerializer):
 
 class StatisticSerializer(serializers.ModelSerializer):
     player_name = serializers.CharField(source="player.full_name", read_only=True)
+    club_id = serializers.SerializerMethodField()
+    team_name = serializers.SerializerMethodField()
+    team_abbreviation = serializers.SerializerMethodField()
 
     class Meta:
         model = Statistic
@@ -38,11 +41,32 @@ class StatisticSerializer(serializers.ModelSerializer):
             "id",
             "player",
             "player_name",
+            "team",
+            "club_id",
+            "team_name",
+            "team_abbreviation",
             "season",
             "ppg",
             "rpg",
             "apg",
         )
+
+    def get_club_id(self, obj):
+        club = self._stat_club(obj)
+        return club.team_id if club is not None else None
+
+    def _stat_club(self, obj):
+        if obj.team_id:
+            return obj.team
+        return obj.player.team
+
+    def get_team_name(self, obj):
+        club = self._stat_club(obj)
+        return club.full_name if club is not None else None
+
+    def get_team_abbreviation(self, obj):
+        club = self._stat_club(obj)
+        return club.abbreviation if club is not None else None
 
 
 class StandingSerializer(serializers.ModelSerializer):
