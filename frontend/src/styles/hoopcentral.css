@@ -1625,3 +1625,44 @@ table.sortable th button {
 a.score-item {
   color: inherit;
 }
+
+@media (max-width: 760px) {
+  .header-inner {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .header-nav {
+    order: 3;
+    flex: 1 1 100%;
+    overflow-x: auto;
+  }
+
+  .header-search {
+    margin-left: auto;
+  }
+
+  .header-search .hc-input {
+    width: 140px;
+  }
+
+  .main {
+    padding: 16px 12px;
+  }
+
+  .page-title {
+    font-size: 18px;
+  }
+
+  .split,
+  .leaders-grid,
+  .game-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .footer-inner {
+    gap: 10px;
+  }
+}

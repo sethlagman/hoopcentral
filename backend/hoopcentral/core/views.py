@@ -397,11 +397,7 @@ def player_search(request):
     if name:
         n = name.strip()
         if n:
-            players = players.filter(
-                Q(full_name__icontains=n)
-                | Q(first_name__icontains=n)
-                | Q(last_name__icontains=n)
-            )
+            players = _filter_player_name(players, n)
     if team:
         t = team.strip()
         if t:
@@ -651,6 +647,17 @@ def _schedule_page_number(request):
     except (TypeError, ValueError):
         return 1
     return page if page >= 1 else 1
+
+
+@api_view(["GET"])
+def game_detail(request, game_id):
+    """One game: teams, score, status, tip time, and venue. No box score is stored."""
+
+    game = get_object_or_404(
+        Game.objects.select_related("home_team", "away_team"),
+        game_id=game_id,
+    )
+    return Response(GameSerializer(game).data)
 
 
 @api_view(["GET"])

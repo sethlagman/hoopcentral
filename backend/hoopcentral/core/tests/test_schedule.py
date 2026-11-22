@@ -136,6 +136,19 @@ class ScheduleViewTests(TestCase):
         response = self.client.get("/api/schedule?from=10-22-2025")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_game_detail(self):
+        response = self.client.get("/api/game/0022500100")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        self.assertEqual(body["arena_name"], "Madison Square Garden")
+        self.assertEqual(body["home_score"], 101)
+        self.assertEqual(body["away_team_name"], "Boston Celtics")
+        self.assertEqual(body["status_text"], "Final")
+
+    def test_game_detail_missing(self):
+        response = self.client.get("/api/game/missing")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
 
 class GamesFromScheduleTests(SimpleTestCase):
     def setUp(self):
