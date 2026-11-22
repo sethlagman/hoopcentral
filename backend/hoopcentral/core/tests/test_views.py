@@ -94,6 +94,41 @@ class PlayerAndTeamViewsTests(TestCase):
         r = self.client.get("/api/player/999999999")
         self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_player_list_filters_name_team_and_active(self):
+        home = _mk_team("510")
+        other = _mk_team("511")
+        other.abbreviation = "OTH"
+        other.full_name = "Other Club"
+        other.save()
+        _mk_player(home, pid="510-a", full_name="Alice Jones", first_name="Alice", last_name="Jones")
+        _mk_player(
+            other,
+            pid="511-b",
+            full_name="Bob Jones",
+            first_name="Bob",
+            last_name="Jones",
+            is_active=False,
+        )
+        by_name = self.client.get("/api/player?name=alice")
+        self.assertEqual([row["player_id"] for row in by_name.json()["results"]], ["510-a"])
+        accented = _mk_player(
+            home,
+            pid="510-c",
+            full_name="Nikola Jokić",
+            first_name="Nikola",
+            last_name="Jokić",
+        )
+        folded = self.client.get("/api/player?name=jokic")
+        self.assertEqual([row["player_id"] for row in folded.json()["results"]], [accented.player_id])
+        by_team = self.client.get("/api/player?team=OTH")
+        self.assertEqual([row["player_id"] for row in by_team.json()["results"]], ["511-b"])
+        active = self.client.get("/api/player?active=true&name=jones")
+        self.assertEqual([row["player_id"] for row in active.json()["results"]], ["510-a"])
+
+    def test_player_list_bad_active(self):
+        r = self.client.get("/api/player?active=maybe")
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class StatLeaderTests(TestCase):
     databases = {"default"}

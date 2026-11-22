@@ -6,9 +6,10 @@ REST API views, mounted under ``/api/``.
 
 import os
 from datetime import datetime
+import unicodedata
 
-from django.db.models import Avg, Exists, IntegerField, OuterRef, Q
-from django.db.models.functions import Cast
+from django.db.models import Avg, Exists, IntegerField, OuterRef, Q, Value
+from django.db.models.functions import Cast, Lower, Replace
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
@@ -192,9 +193,73 @@ def _schedule_team_ids(team_param):
     return ids
 
 
+def _fold_text(value):
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    return "".join(ch for ch in text if not unicodedata.combining(ch)).casefold()
+
+
+_ACCENT_FOLDS = (
+    ("á", "a"), ("à", "a"), ("ä", "a"), ("â", "a"), ("ã", "a"), ("å", "a"), ("ā", "a"),
+    ("é", "e"), ("è", "e"), ("ë", "e"), ("ê", "e"), ("ě", "e"), ("ē", "e"),
+    ("í", "i"), ("ì", "i"), ("ï", "i"), ("î", "i"), ("ī", "i"),
+    ("ó", "o"), ("ò", "o"), ("ö", "o"), ("ô", "o"), ("õ", "o"), ("ō", "o"),
+    ("ú", "u"), ("ù", "u"), ("ü", "u"), ("û", "u"), ("ū", "u"),
+    ("ý", "y"), ("ÿ", "y"),
+    ("ñ", "n"), ("ç", "c"), ("ć", "c"), ("č", "c"), ("š", "s"), ("ž", "z"), ("đ", "d"),
+)
+
+
+def _folded_column(field):
+    expr = Lower(field)
+    for src, dst in _ACCENT_FOLDS:
+        expr = Replace(expr, Value(src), Value(dst))
+    return expr
+
+
+def _filter_player_name(players, name):
+    folded = _fold_text(name)
+    if not folded:
+        return players
+    return players.annotate(
+        _folded_full=_folded_column("full_name"),
+        _folded_first=_folded_column("first_name"),
+        _folded_last=_folded_column("last_name"),
+    ).filter(
+        Q(_folded_full__icontains=folded)
+        | Q(_folded_first__icontains=folded)
+        | Q(_folded_last__icontains=folded)
+    )
+
+
 @api_view(["GET"])
 def player_list(request):
-    players = Player.objects.all().order_by("full_name", "player_id")
+    """
+    Players ordered by name.
+
+    Optional filters: ``name`` (full, first, or last), ``team`` (id, abbreviation,
+    full name, or nickname), ``active`` (``true`` or ``false``).
+    """
+
+    players = Player.objects.select_related("team").all()
+    name = (request.query_params.get("name") or "").strip()
+    if name:
+        players = _filter_player_name(players, name)
+    team = (request.query_params.get("team") or "").strip()
+    if team:
+        players = players.filter(
+            Q(team_id=team)
+            | Q(team__abbreviation__iexact=team)
+            | Q(team__full_name__icontains=team)
+            | Q(team__nickname__icontains=team)
+        )
+    active = (request.query_params.get("active") or "").strip().lower()
+    if active in ("1", "true", "yes"):
+        players = players.filter(is_active=True)
+    elif active in ("0", "false", "no"):
+        players = players.filter(is_active=False)
+    elif active:
+        return Response({"error": "active must be true or false"}, status=400)
+    players = players.order_by("full_name", "player_id")
     return _paginated_response(request, players, PlayerSerializer)
 
 
