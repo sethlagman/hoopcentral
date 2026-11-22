@@ -6,9 +6,10 @@ REST API views, mounted under ``/api/``.
 
 import os
 from datetime import datetime
+import unicodedata
 
-from django.db.models import Avg, Exists, IntegerField, OuterRef, Q
-from django.db.models.functions import Cast
+from django.db.models import Avg, Exists, F, IntegerField, OuterRef, Q, Value
+from django.db.models.functions import Cast, Lower, Replace
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
@@ -36,6 +37,17 @@ STAT_LEADER_FIELDS = {
     "points_per_game": "ppg",
     "assists_per_game": "apg",
     "rebounds_per_game": "rpg",
+}
+
+STAT_LIST_ORDERING = {
+    "ppg": "ppg",
+    "-ppg": "ppg",
+    "rpg": "rpg",
+    "-rpg": "rpg",
+    "apg": "apg",
+    "-apg": "apg",
+    "player": "player__full_name",
+    "-player": "player__full_name",
 }
 
 
@@ -192,9 +204,73 @@ def _schedule_team_ids(team_param):
     return ids
 
 
+def _fold_text(value):
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    return "".join(ch for ch in text if not unicodedata.combining(ch)).casefold()
+
+
+_ACCENT_FOLDS = (
+    ("á", "a"), ("à", "a"), ("ä", "a"), ("â", "a"), ("ã", "a"), ("å", "a"), ("ā", "a"),
+    ("é", "e"), ("è", "e"), ("ë", "e"), ("ê", "e"), ("ě", "e"), ("ē", "e"),
+    ("í", "i"), ("ì", "i"), ("ï", "i"), ("î", "i"), ("ī", "i"),
+    ("ó", "o"), ("ò", "o"), ("ö", "o"), ("ô", "o"), ("õ", "o"), ("ō", "o"),
+    ("ú", "u"), ("ù", "u"), ("ü", "u"), ("û", "u"), ("ū", "u"),
+    ("ý", "y"), ("ÿ", "y"),
+    ("ñ", "n"), ("ç", "c"), ("ć", "c"), ("č", "c"), ("š", "s"), ("ž", "z"), ("đ", "d"),
+)
+
+
+def _folded_column(field):
+    expr = Lower(field)
+    for src, dst in _ACCENT_FOLDS:
+        expr = Replace(expr, Value(src), Value(dst))
+    return expr
+
+
+def _filter_player_name(players, name):
+    folded = _fold_text(name)
+    if not folded:
+        return players
+    return players.annotate(
+        _folded_full=_folded_column("full_name"),
+        _folded_first=_folded_column("first_name"),
+        _folded_last=_folded_column("last_name"),
+    ).filter(
+        Q(_folded_full__icontains=folded)
+        | Q(_folded_first__icontains=folded)
+        | Q(_folded_last__icontains=folded)
+    )
+
+
 @api_view(["GET"])
 def player_list(request):
-    players = Player.objects.all().order_by("full_name", "player_id")
+    """
+    Players ordered by name.
+
+    Optional filters: ``name`` (full, first, or last), ``team`` (id, abbreviation,
+    full name, or nickname), ``active`` (``true`` or ``false``).
+    """
+
+    players = Player.objects.select_related("team").all()
+    name = (request.query_params.get("name") or "").strip()
+    if name:
+        players = _filter_player_name(players, name)
+    team = (request.query_params.get("team") or "").strip()
+    if team:
+        players = players.filter(
+            Q(team_id=team)
+            | Q(team__abbreviation__iexact=team)
+            | Q(team__full_name__icontains=team)
+            | Q(team__nickname__icontains=team)
+        )
+    active = (request.query_params.get("active") or "").strip().lower()
+    if active in ("1", "true", "yes"):
+        players = players.filter(is_active=True)
+    elif active in ("0", "false", "no"):
+        players = players.filter(is_active=False)
+    elif active:
+        return Response({"error": "active must be true or false"}, status=400)
+    players = players.order_by("full_name", "player_id")
     return _paginated_response(request, players, PlayerSerializer)
 
 
@@ -205,9 +281,43 @@ def team_list(request):
     return Response(serializer.data)
 
 
+def _stat_list_order(key):
+    desc = key.startswith("-")
+    expr = F(STAT_LIST_ORDERING[key])
+    ordered = expr.desc(nulls_last=True) if desc else expr.asc(nulls_last=True)
+    return (ordered, "pk")
+
+
 @api_view(["GET"])
 def statistic_list(request):
-    statistics = Statistic.objects.all().select_related("player").order_by("pk")
+    """
+    Per-game averages. Optional ``season`` (``2025`` or ``2025-26``) and
+    ``ordering`` (``ppg``, ``rpg``, ``apg``, ``player``, each with an optional
+    leading ``-``). Stat sorts place nulls last. A current-season request
+    keeps active players only, matching the leaders endpoint. Older seasons
+    keep players whose career window covers that season.
+    """
+
+    statistics = Statistic.objects.select_related("player", "player__team", "team")
+    season = (request.query_params.get("season") or "").strip()
+    if season:
+        variants = season_lookup_variants(season)
+        statistics = statistics.filter(season__in=variants)
+        if _same_league_campaign_as_env(season):
+            statistics = statistics.filter(player__is_active=True)
+        else:
+            statistics = _statistics_players_active_in_season(
+                statistics,
+                resolve_season_start_year(season, variants),
+            )
+    ordering = (request.query_params.get("ordering") or "").strip()
+    if ordering:
+        if ordering not in STAT_LIST_ORDERING:
+            valid = ", ".join(STAT_LIST_ORDERING)
+            return Response({"error": f"Invalid ordering. Choose from {valid}"}, status=400)
+        statistics = statistics.order_by(*_stat_list_order(ordering))
+    else:
+        statistics = statistics.order_by("pk")
     return _paginated_response(request, statistics, StatisticSerializer)
 
 

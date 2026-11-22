@@ -94,6 +94,75 @@ class PlayerAndTeamViewsTests(TestCase):
         r = self.client.get("/api/player/999999999")
         self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_player_list_filters_name_team_and_active(self):
+        home = _mk_team("510")
+        other = _mk_team("511")
+        other.abbreviation = "OTH"
+        other.full_name = "Other Club"
+        other.save()
+        _mk_player(home, pid="510-a", full_name="Alice Jones", first_name="Alice", last_name="Jones")
+        _mk_player(
+            other,
+            pid="511-b",
+            full_name="Bob Jones",
+            first_name="Bob",
+            last_name="Jones",
+            is_active=False,
+        )
+        by_name = self.client.get("/api/player?name=alice")
+        self.assertEqual([row["player_id"] for row in by_name.json()["results"]], ["510-a"])
+        accented = _mk_player(
+            home,
+            pid="510-c",
+            full_name="Nikola Jokić",
+            first_name="Nikola",
+            last_name="Jokić",
+        )
+        folded = self.client.get("/api/player?name=jokic")
+        self.assertEqual([row["player_id"] for row in folded.json()["results"]], [accented.player_id])
+        by_team = self.client.get("/api/player?team=OTH")
+        self.assertEqual([row["player_id"] for row in by_team.json()["results"]], ["511-b"])
+        active = self.client.get("/api/player?active=true&name=jones")
+        self.assertEqual([row["player_id"] for row in active.json()["results"]], ["510-a"])
+
+    def test_player_list_bad_active(self):
+        r = self.client.get("/api/player?active=maybe")
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_statistic_season_ordering(self):
+        team = _mk_team("700")
+        alpha = _mk_player(team, pid="700-a", full_name="Alpha")
+        beta = _mk_player(team, pid="700-b", full_name="Beta")
+        _mk_stat(alpha, ppg=Decimal("10.0"))
+        _mk_stat(beta, ppg=Decimal("30.0"))
+        _mk_stat(alpha, season="2020-21", ppg=Decimal("99.0"))
+        r = self.client.get("/api/statistic?season=2025-26&ordering=-ppg")
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        rows = r.json()["results"]
+        self.assertEqual([row["player"] for row in rows], ["700-b", "700-a"])
+        self.assertEqual(rows[0]["team_abbreviation"], "TST")
+        self.assertEqual(rows[0]["ppg"], "30.0")
+
+    def test_statistic_bad_ordering(self):
+        r = self.client.get("/api/statistic?ordering=drop")
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_statistic_current_season_excludes_inactive(self):
+        team = _mk_team("701")
+        retired = _mk_player(
+            team,
+            pid="701-r",
+            full_name="Retired Star",
+            is_active=False,
+            year_start="1959",
+            year_end="1972",
+        )
+        _mk_stat(retired, ppg=Decimal("50.0"))
+        active = _mk_player(team, pid="701-a", full_name="Active Star")
+        _mk_stat(active, ppg=Decimal("10.0"))
+        rows = self.client.get("/api/statistic?season=2025-26&ordering=-ppg").json()["results"]
+        self.assertEqual([row["player"] for row in rows], ["701-a"])
+
 
 class StatLeaderTests(TestCase):
     databases = {"default"}
