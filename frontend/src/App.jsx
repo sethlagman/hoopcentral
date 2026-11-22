@@ -7,6 +7,7 @@ import LeadersPage from './pages/LeadersPage.jsx'
 import PlayerPage from './pages/PlayerPage.jsx'
 import PlayersPage from './pages/PlayersPage.jsx'
 import SchedulePage from './pages/SchedulePage.jsx'
+import SearchPage from './pages/SearchPage.jsx'
 import StandingsPage from './pages/StandingsPage.jsx'
 import StatsPage from './pages/StatsPage.jsx'
 import TeamPage from './pages/TeamPage.jsx'
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/standings" element={<StandingsPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/games/:gameId" element={<GamePage />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppShell>

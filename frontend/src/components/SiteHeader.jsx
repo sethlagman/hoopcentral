@@ -1,4 +1,5 @@
-import { Link, NavLink } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 
 const LINKS = [
   { to: '/', label: 'Home', end: true },
@@ -11,6 +12,16 @@ const LINKS = [
 ]
 
 export default function SiteHeader() {
+  const navigate = useNavigate()
+  const [query, setQuery] = useState('')
+
+  const search = (event) => {
+    event.preventDefault()
+    const text = query.trim()
+    if (!text) return
+    navigate(`/search?q=${encodeURIComponent(text)}`)
+  }
+
   return (
     <header>
       <div className="header-inner">
@@ -30,6 +41,15 @@ export default function SiteHeader() {
             </NavLink>
           ))}
         </nav>
+        <form className="header-search" onSubmit={search}>
+          <input
+            className="hc-input"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search players, teams"
+            aria-label="Search players and teams"
+          />
+        </form>
       </div>
     </header>
   )

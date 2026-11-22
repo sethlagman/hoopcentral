@@ -397,11 +397,7 @@ def player_search(request):
     if name:
         n = name.strip()
         if n:
-            players = players.filter(
-                Q(full_name__icontains=n)
-                | Q(first_name__icontains=n)
-                | Q(last_name__icontains=n)
-            )
+            players = _filter_player_name(players, n)
     if team:
         t = team.strip()
         if t:
