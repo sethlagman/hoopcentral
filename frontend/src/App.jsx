@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import './styles/hoopcentral.css'
 import AppShell from './components/layout/AppShell.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
+import GamePage from './pages/GamePage.jsx'
 import LeadersPage from './pages/LeadersPage.jsx'
 import PlayerPage from './pages/PlayerPage.jsx'
 import PlayersPage from './pages/PlayersPage.jsx'
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/leaders" element={<LeadersPage />} />
         <Route path="/standings" element={<StandingsPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
+        <Route path="/games/:gameId" element={<GamePage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppShell>

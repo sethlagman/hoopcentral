@@ -654,6 +654,17 @@ def _schedule_page_number(request):
 
 
 @api_view(["GET"])
+def game_detail(request, game_id):
+    """One game: teams, score, status, tip time, and venue. No box score is stored."""
+
+    game = get_object_or_404(
+        Game.objects.select_related("home_team", "away_team"),
+        game_id=game_id,
+    )
+    return Response(GameSerializer(game).data)
+
+
+@api_view(["GET"])
 def schedule_list(request):
     """
     Games for a season, latest first.
