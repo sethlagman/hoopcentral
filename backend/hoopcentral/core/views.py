@@ -159,6 +159,21 @@ def _standing_for_team_season_or_404(team_id, variants):
     return standing
 
 
+class _BadDate(Exception):
+    def __init__(self, field):
+        self.field = field
+
+
+def _query_date(request, name):
+    text = (request.query_params.get(name) or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.strptime(text, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise _BadDate(name) from exc
+
+
 def _schedule_team_ids(team_param):
     """
     Team ids matching ``team_param`` by id or abbreviation (case-insensitive).
@@ -534,8 +549,9 @@ def schedule_list(request):
     Games for a season, latest first.
 
     Query params: ``season`` (default ``SEASON``), ``date`` (YYYY-MM-DD),
-    ``team`` (id or abbreviation), ``page`` (default 1), ``page_size``
-    (default 40, max 200; ``limit`` is accepted as an alias).
+    ``from`` and ``to`` (inclusive YYYY-MM-DD bounds), ``team`` (id or
+    abbreviation), ``order`` (``desc`` default, or ``asc``), ``page``
+    (default 1), ``page_size`` (default 40, max 200; ``limit`` is an alias).
     """
 
     season = (request.query_params.get("season") or SEASON).strip()
@@ -558,15 +574,26 @@ def schedule_list(request):
             )
         games = games.filter(Q(home_team_id__in=team_ids) | Q(away_team_id__in=team_ids))
 
-    date_text = (request.query_params.get("date") or "").strip()
-    if date_text:
-        try:
-            game_day = datetime.strptime(date_text, "%Y-%m-%d").date()
-        except ValueError:
-            return Response({"error": "date must be YYYY-MM-DD"}, status=400)
+    try:
+        game_day = _query_date(request, "date")
+        start_date = _query_date(request, "from")
+        end = _query_date(request, "to")
+    except _BadDate as exc:
+        return Response({"error": f"{exc.field} must be YYYY-MM-DD"}, status=400)
+    if game_day is not None:
         games = games.filter(game_date=game_day)
+    if start_date is not None:
+        games = games.filter(game_date__gte=start_date)
+    if end is not None:
+        games = games.filter(game_date__lte=end)
 
-    games = games.order_by("-game_date", "-game_id")
+    order = (request.query_params.get("order") or "desc").strip().lower()
+    if order not in ("asc", "desc"):
+        return Response({"error": "order must be asc or desc"}, status=400)
+    if order == "asc":
+        games = games.order_by("game_date", "game_id")
+    else:
+        games = games.order_by("-game_date", "-game_id")
     total = games.count()
     if total:
         last_page = (total + page_size - 1) // page_size

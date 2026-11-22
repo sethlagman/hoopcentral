@@ -1308,3 +1308,320 @@ button.hc-btn:focus-visible {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.nav-link.active {
+  background: #f0f0f0;
+  color: #111;
+}
+
+.header-search .hc-input {
+  width: 190px;
+  height: 32px;
+}
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.dash-intro {
+  margin: -4px 0 14px;
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.crumbs a:hover {
+  text-decoration: underline;
+}
+
+.section-block {
+  margin-top: 22px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.card-grid.one-col {
+  grid-template-columns: 1fr;
+}
+
+.team-card,
+.game-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #e0e0e0;
+  padding: 12px;
+  background: #fff;
+  color: inherit;
+}
+
+.team-card:hover,
+.game-card:hover {
+  background: #f7f7f7;
+}
+
+a.pcell:hover .pname,
+a.page-title:hover {
+  text-decoration: underline;
+}
+
+.game-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.logo-img,
+.logo-fallback {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.logo-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #111;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.logo-img.sm,
+.logo-fallback.sm {
+  width: 28px;
+  height: 28px;
+  font-size: 9px;
+}
+
+.logo-img.lg,
+.logo-fallback.lg {
+  width: 84px;
+  height: 84px;
+  font-size: 16px;
+}
+
+.pname,
+.pteam {
+  display: block;
+}
+
+a.pcell {
+  color: inherit;
+}
+
+.matchup-id {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.matchup-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.matchup-line.lose {
+  color: #888;
+  font-weight: 600;
+}
+
+.game-card-status {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.game-card-status.live {
+  color: #d0021b;
+}
+
+.game-card-status.final {
+  color: #111;
+}
+
+.profile-head {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.stat-tile {
+  border: 1px solid #e0e0e0;
+  padding: 10px 12px;
+}
+
+.stat-tile b {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.stat-tile span {
+  font-size: 11px;
+  color: #666;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.leaders-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table.sortable th button {
+  background: none;
+  border: none;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  padding: 0;
+  color: inherit;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 99px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chip.on {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+.check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.filter-row {
+  margin-bottom: 12px;
+}
+
+.game-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 12px 0 18px;
+}
+
+.game-side {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #e0e0e0;
+  padding: 14px;
+}
+
+.game-side.win {
+  border-color: #111;
+}
+
+.game-side-score {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.fact-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.fact-list div {
+  border: 1px solid #e0e0e0;
+  padding: 10px 12px;
+}
+
+.fact-list dt {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.fact-list dd {
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+a.score-item {
+  color: inherit;
+}

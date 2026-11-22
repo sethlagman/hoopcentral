@@ -1,28 +1,35 @@
-const NAV = ['Scores', 'Watch', 'Betting', 'Fantasy', 'Stories']
+import { Link, NavLink } from 'react-router-dom'
+
+const LINKS = [
+  { to: '/', label: 'Home', end: true },
+  { to: '/teams', label: 'Teams' },
+  { to: '/players', label: 'Players' },
+  { to: '/standings', label: 'Standings' },
+  { to: '/stats', label: 'Stats' },
+  { to: '/leaders', label: 'Leaders' },
+  { to: '/schedule', label: 'Schedule' },
+]
 
 export default function SiteHeader() {
   return (
     <header>
       <div className="header-inner">
-        <a className="logo" href="#">
+        <Link className="logo" to="/">
           <span className="logo-box">HC</span>
           HoopCentral
-        </a>
-        <nav className="header-nav">
-          {NAV.map((label) => (
-            <a key={label} href="#">
-              {label}
-            </a>
+        </Link>
+        <nav className="header-nav" aria-label="Primary">
+          {LINKS.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+            >
+              {link.label}
+            </NavLink>
           ))}
         </nav>
-        <div className="header-right">
-          <button type="button" className="search-icon-btn" aria-label="Search">
-            🔍
-          </button>
-          <button type="button" className="signin-btn">
-            Sign In
-          </button>
-        </div>
       </div>
     </header>
   )
