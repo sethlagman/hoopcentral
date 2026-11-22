@@ -23,15 +23,21 @@ async function apiJson(path, options = {}) {
 }
 
 /** Paginated list: { count, next, previous, results } */
-export function fetchPlayerList(page = 1, pageSize = 20) {
+export function fetchPlayerList({ page = 1, pageSize = 20, name, team, active } = {}) {
   const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  if (name?.trim()) q.set('name', name.trim())
+  if (team?.trim()) q.set('team', team.trim())
+  if (active === true) q.set('active', 'true')
+  if (active === false) q.set('active', 'false')
   return apiJson(`/player?${q}`)
 }
 
 export const BULK_INDEX_PAGE_SIZE = 40
 
-export function fetchStatisticList(page = 1, pageSize = BULK_INDEX_PAGE_SIZE) {
+export function fetchStatisticList({ page = 1, pageSize = BULK_INDEX_PAGE_SIZE, season, ordering } = {}) {
   const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  if (season?.trim()) q.set('season', season.trim())
+  if (ordering?.trim()) q.set('ordering', ordering.trim())
   return apiJson(`/statistic?${q}`)
 }
 
@@ -111,14 +117,21 @@ export function fetchSeasonSummary(season) {
   return apiJson(`/season/${encodeURIComponent(season)}/summary`)
 }
 
-/** Season schedule, latest game first. `date` is YYYY-MM-DD. `team` is a team id or abbreviation. */
-export function fetchSchedule({ season, date, team, page = 1, pageSize = 40 } = {}) {
+/** Season schedule. `date`, `from`, and `to` are YYYY-MM-DD. `team` is a team id or abbreviation. `order` is `asc` or `desc`. */
+export function fetchSchedule({ season, date, from, to, team, order, page = 1, pageSize = 40 } = {}) {
   const q = new URLSearchParams()
   if (season?.trim()) q.set('season', season.trim())
   if (date?.trim()) q.set('date', date.trim())
+  if (from?.trim()) q.set('from', from.trim())
+  if (to?.trim()) q.set('to', to.trim())
   if (team?.trim()) q.set('team', team.trim())
+  if (order?.trim()) q.set('order', order.trim())
   if (page) q.set('page', String(page))
   if (pageSize) q.set('page_size', String(pageSize))
   const qs = q.toString()
   return apiJson(qs ? `/schedule?${qs}` : '/schedule')
+}
+
+export function fetchGame(gameId) {
+  return apiJson(`/game/${encodeURIComponent(gameId)}`)
 }

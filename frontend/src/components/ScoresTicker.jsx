@@ -1,49 +1,56 @@
-const GAMES = [
-  { sport: 'NBA', t1: 'BOS', s1: '114', t2: 'NYK', s2: '108', time: 'Q4 2:34', live: true },
-  { sport: 'NBA', t1: 'GSW', s1: '101', t2: 'LAL', s2: '99', time: 'Q3 5:12', live: true },
-  { sport: 'FIFA', t1: 'MCI', s1: '2', t2: 'ARS', s2: '2', time: "75'", live: true },
-  { sport: 'NFL', t1: 'KC', s1: '24', t2: 'DAL', s2: '17', time: 'FINAL', live: false },
-  { sport: 'MLB', t1: 'NYY', s1: '4', t2: 'BOS', s2: '3', time: 'BOT 7', live: true },
-  { sport: 'NHL', t1: 'TOR', s1: '3', t2: 'MTL', s2: '1', time: 'FINAL', live: false },
-  { sport: 'MMA / UFC', t1: 'JONES', s1: 'W', t2: 'MIOCIC', s2: 'L', time: 'R3 KO', live: false },
-  {
-    sport: 'NBA',
-    t1: 'MIL',
-    s1: '—',
-    t2: 'MIA',
-    s2: '—',
-    time: '7:30 PM ET',
-    live: false,
-    upcomingStyle: true,
-  },
-]
+import { Link } from 'react-router-dom'
+import { DEFAULT_NBA_SEASON } from '../config/api.js'
+import { fetchSchedule } from '../api/hoopcentral.js'
+import { etDate, gamePresentation } from '../lib/nba.js'
+import { useLoad } from '../lib/useLoad.js'
+
+function loadTicker() {
+  const today = etDate(0)
+  return fetchSchedule({ season: DEFAULT_NBA_SEASON, date: today, pageSize: 15, order: 'asc' }).then((day) => {
+    if (day?.games?.length) return day.games
+    return fetchSchedule({
+      season: DEFAULT_NBA_SEASON,
+      to: today,
+      pageSize: 12,
+      order: 'desc',
+    }).then((recent) => recent?.games || [])
+  })
+}
 
 export default function ScoresTicker() {
+  const state = useLoad(etDate(0), loadTicker)
+  const games = state.data || []
+
   return (
     <div className="scores-ticker">
       <div className="scores-ticker-inner">
-        {GAMES.map((g, i) => (
-          <div key={i} className="score-item">
-            <div className="sport-label">{g.sport}</div>
-            <div className="team-row">
-              <span>{g.t1}</span>
-              <span className="score-val">{g.s1}</span>
-            </div>
-            <div className="team-row">
-              <span>{g.t2}</span>
-              <span className="score-val">{g.s2}</span>
-            </div>
-            <div
-              className={`game-time${g.live ? ' live' : ''}`}
-              style={g.upcomingStyle ? { color: '#0066cc' } : undefined}
-            >
-              {g.time}
-            </div>
-          </div>
-        ))}
-        <button type="button" className="all-scores-btn">
-          ALL SCORES
-        </button>
+        {state.loading ? <div className="score-item">Loading scores</div> : null}
+        {state.error ? <div className="score-item">Scores unavailable</div> : null}
+        {!state.loading && !state.error && games.length === 0 ? (
+          <div className="score-item">No games on the schedule</div>
+        ) : null}
+        {games.map((game) => {
+          const view = gamePresentation(game)
+          const awayScore = view.showScore ? game.away_score ?? '' : ''
+          const homeScore = view.showScore ? game.home_score ?? '' : ''
+          return (
+            <Link key={game.game_id} to={`/games/${game.game_id}`} className="score-item">
+              <div className="sport-label">NBA</div>
+              <div className="team-row">
+                <span>{game.away_tricode || 'Away'}</span>
+                <span className="score-val">{awayScore}</span>
+              </div>
+              <div className="team-row">
+                <span>{game.home_tricode || 'Home'}</span>
+                <span className="score-val">{homeScore}</span>
+              </div>
+              <div className={`game-time${view.kind === 'live' ? ' live' : ''}`}>{view.label}</div>
+            </Link>
+          )
+        })}
+        <Link to="/schedule" className="all-scores-btn">
+          All scores
+        </Link>
       </div>
     </div>
   )

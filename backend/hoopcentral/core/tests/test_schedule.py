@@ -119,6 +119,23 @@ class ScheduleViewTests(TestCase):
         self.assertEqual(second.json()["games"][0]["game_id"], "0022500001")
         self.assertEqual(second.json()["page"], 2)
 
+    def test_from_to_ascending(self):
+        response = self.client.get(
+            "/api/schedule?season=2025-26&from=2025-10-01&to=2025-10-31&order=asc"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = response.json()
+        self.assertEqual(body["count"], 1)
+        self.assertEqual(body["games"][0]["game_id"], "0022500001")
+
+    def test_bad_order(self):
+        response = self.client.get("/api/schedule?order=sideways")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_bad_from_date(self):
+        response = self.client.get("/api/schedule?from=10-22-2025")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class GamesFromScheduleTests(SimpleTestCase):
     def setUp(self):
