@@ -50,6 +50,24 @@ STAT_LIST_ORDERING = {
     "-player": "player__full_name",
 }
 
+STANDING_LIST_ORDERING = {
+    "wins": "wins",
+    "-wins": "wins",
+    "losses": "losses",
+    "-losses": "losses",
+    "winrate": "winrate",
+    "-winrate": "winrate",
+    "team": "team__full_name",
+    "-team": "team__full_name",
+}
+
+CONFERENCE_FILTERS = {
+    "east": "East",
+    "eastern": "East",
+    "west": "West",
+    "western": "West",
+}
+
 
 class StandardPagination(PageNumberPagination):
     page_size = 20
@@ -276,16 +294,29 @@ def player_list(request):
 
 @api_view(["GET"])
 def team_list(request):
+    """
+    All teams, ordered by id.
+
+    Optional ``search`` matches full name, nickname, city, or abbreviation.
+    The response stays a list: there are only 30 NBA franchises.
+    """
+
     teams = Team.objects.all().order_by("pk")
+    search = (request.query_params.get("search") or "").strip()
+    if search:
+        teams = teams.filter(
+            Q(team_id=search)
+            | Q(abbreviation__iexact=search)
+            | Q(full_name__icontains=search)
+            | Q(nickname__icontains=search)
+            | Q(city__icontains=search)
+        )
     serializer = TeamSerializer(teams, many=True)
     return Response(serializer.data)
 
 
 def _stat_list_order(key):
-    desc = key.startswith("-")
-    expr = F(STAT_LIST_ORDERING[key])
-    ordered = expr.desc(nulls_last=True) if desc else expr.asc(nulls_last=True)
-    return (ordered, "pk")
+    return _stat_list_order_fields(key, STAT_LIST_ORDERING)
 
 
 @api_view(["GET"])
@@ -323,13 +354,51 @@ def statistic_list(request):
 
 @api_view(["GET"])
 def standing_list(request):
-    standings = Standing.objects.all().select_related("team").order_by("pk")
+    """
+    Standings. Optional ``season`` (``2025`` or ``2025-26``), ``conference``
+    (``East`` or ``West``), ``team`` (id, abbreviation, or name), and
+    ``ordering`` (``wins``, ``losses``, ``winrate``, ``team``, each with an
+    optional leading ``-``).
+    """
+
+    standings = Standing.objects.all().select_related("team")
+    season = (request.query_params.get("season") or "").strip()
+    if season:
+        standings = standings.filter(season__in=season_lookup_variants(season))
+    conference = (request.query_params.get("conference") or "").strip().lower()
+    if conference:
+        if conference not in CONFERENCE_FILTERS:
+            return Response({"error": "conference must be East or West"}, status=400)
+        standings = standings.filter(conference__istartswith=CONFERENCE_FILTERS[conference])
+    team = (request.query_params.get("team") or "").strip()
+    if team:
+        standings = standings.filter(
+            Q(team_id=team)
+            | Q(team__abbreviation__iexact=team)
+            | Q(team__full_name__icontains=team)
+            | Q(team__nickname__icontains=team)
+        )
+    ordering = (request.query_params.get("ordering") or "").strip()
+    if ordering:
+        if ordering not in STANDING_LIST_ORDERING:
+            valid = ", ".join(STANDING_LIST_ORDERING)
+            return Response({"error": f"Invalid ordering. Choose from {valid}"}, status=400)
+        standings = standings.order_by(*_stat_list_order_fields(ordering, STANDING_LIST_ORDERING))
+    else:
+        standings = standings.order_by("pk")
     return _paginated_response(request, standings, StandingSerializer)
+
+
+def _stat_list_order_fields(key, fields):
+    desc = key.startswith("-")
+    expr = F(fields[key])
+    ordered = expr.desc(nulls_last=True) if desc else expr.asc(nulls_last=True)
+    return (ordered, "pk")
 
 
 @api_view(["GET"])
 def player_id(request, player_id):
-    player = get_object_or_404(Player, player_id=player_id)
+    player = get_object_or_404(Player.objects.select_related("team"), player_id=player_id)
     serializer = PlayerSerializer(player)
     return Response(serializer.data)
 
@@ -343,7 +412,11 @@ def team_id(request, team_id):
 
 @api_view(["GET"])
 def player_statistic(request, player_id):
-    player_statistics = Statistic.objects.filter(player_id=player_id).order_by("season")
+    player_statistics = (
+        Statistic.objects.filter(player_id=player_id)
+        .select_related("player", "player__team", "team")
+        .order_by("season")
+    )
     serializer = StatisticSerializer(player_statistics, many=True)
     return Response(serializer.data)
 
@@ -362,8 +435,10 @@ def player_statistic_season(request, player_id, season):
     """``season`` may be a start year (``2025``) or an NBA key (``2025-26``)."""
 
     variants = season_lookup_variants(season)
-    player_statistics = Statistic.objects.filter(player_id=player_id, season__in=variants).order_by(
-        "season"
+    player_statistics = (
+        Statistic.objects.filter(player_id=player_id, season__in=variants)
+        .select_related("player", "player__team", "team")
+        .order_by("season")
     )
     serializer = StatisticSerializer(player_statistics, many=True)
     return Response(serializer.data)
