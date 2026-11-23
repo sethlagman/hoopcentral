@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    health,
     player_career_summary,
     player_id,
     player_list,
@@ -24,6 +25,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path("health", health, name="health"),
     path("player", player_list, name="player"),
     path("team", team_list, name="team"),
     path("standing", standing_list, name="standing"),

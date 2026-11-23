@@ -86,5 +86,6 @@ python manage.py seed_standing
 python manage.py seed_player
 python manage.py seed_stat
 python manage.py seed_schedule
+python manage.py ingestion_status
 
 echo "Ingestion complete"

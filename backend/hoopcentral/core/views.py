@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 import unicodedata
 
+from django.db import connection
 from django.db.models import Avg, Exists, F, IntegerField, OuterRef, Q, Value
 from django.db.models.functions import Cast, Lower, Replace
 from django.http import Http404
@@ -16,7 +17,7 @@ from rest_framework.decorators import api_view
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from .models import Game, Player, Standing, Statistic, Team
+from .models import Game, IngestionRun, Player, Standing, Statistic, Team
 from .season_utils import (
     resolved_season_label,
     resolve_season_start_year,
@@ -803,4 +804,40 @@ def schedule_list(request):
             "page": page,
             "page_size": page_size,
         }
+    )
+
+
+def _database_ok():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except Exception:
+        return False
+    return True
+
+
+def _latest_successful_ingestion():
+    return (
+        IngestionRun.objects.filter(status=IngestionRun.Status.SUCCESS)
+        .exclude(finished_at__isnull=True)
+        .order_by("-finished_at")
+        .first()
+    )
+
+
+@api_view(["GET"])
+def health(request):
+    """Database connectivity and the last successful ingestion time."""
+
+    db_ok = _database_ok()
+    latest = _latest_successful_ingestion() if db_ok else None
+    return Response(
+        {
+            "status": "ok" if db_ok else "unavailable",
+            "database": "ok" if db_ok else "error",
+            "season": SEASON,
+            "data_updated_at": latest.finished_at.isoformat() if latest is not None else None,
+        },
+        status=200 if db_ok else 503,
     )

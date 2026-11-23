@@ -1,6 +1,25 @@
 """NBA season string parsing and statistic rows filtered by career window years."""
 
 
+def canonical_season(season):
+    """
+    Store seasons as ``YYYY-YY`` (``2025`` and ``2025-2026`` both become ``2025-26``).
+
+    Values that are not a four-digit start year are returned unchanged.
+    """
+
+    if season is None:
+        return ""
+    text = str(season).strip()
+    if not text:
+        return ""
+    head = text.split("-", 1)[0].strip() if "-" in text else text
+    if len(head) == 4 and head.isdigit() and (text == head or "-" in text):
+        year = int(head)
+        return f"{year}-{str(year + 1)[-2:]}"
+    return text
+
+
 def season_start_year(season):
     """NBA season keys (e.g. '2024-25') → first calendar year of that league year."""
     if not season:

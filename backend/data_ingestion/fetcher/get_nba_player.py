@@ -1,7 +1,9 @@
-import os
-import requests
 import json
+import os
+import sys
 from pathlib import Path
+
+import requests
 from dotenv import load_dotenv
 
 try:
@@ -9,11 +11,19 @@ try:
 except ImportError:
     from http_utils import get_with_retry
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+_INGEST = Path(__file__).resolve().parent.parent
+if str(_INGEST) not in sys.path:
+    sys.path.insert(0, str(_INGEST))
+
+from log import get_logger
+from validate import assert_result_set
+
+BASE_DIR = _INGEST
 load_dotenv(BASE_DIR.parent.parent / '.env')
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
 API_URL = 'https://stats.nba.com/stats/playerindex'
 SEASON = os.environ.get('SEASON', '2025-26')
+LOG = get_logger('hoopcentral.ingestion.player_fetch')
 
 def get_nba_player(output_file=OUTPUT_DIR / 'nba_player_data.json', season=SEASON):
     """Fetch the playerindex endpoint for ``season`` and merge it into ``output_file`` keyed by season."""
@@ -50,34 +60,46 @@ def get_nba_player(output_file=OUTPUT_DIR / 'nba_player_data.json', season=SEASO
     }
 
     try:
-        print(f"Fetching data from {url}...")
+        LOG.info("Fetching data from %s...", url)
         response = get_with_retry(url, params=params, headers=headers)
 
         data = response.json()
+        assert_result_set(data, f'player {season}')
 
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        overall_data = {}
-        if output_file.exists():
-            with open(output_file, 'r') as f:
-                overall_data = json.load(f)
-
+        overall_data = _read_season_file(output_file)
         overall_data[season] = data
 
         with open(output_file, 'w') as f:
             json.dump(overall_data, f, indent=2)
 
-        print(f"Successfully downloaded and saved to {output_file}")
-        print(f"Response status: {response.status_code}")
+        LOG.info("Successfully downloaded and saved to %s", output_file)
+        LOG.info("Response status: %s", response.status_code)
 
         return data
 
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching data: {e}")
+        LOG.error("Error fetching data: %s", e)
         raise
     except json.JSONDecodeError as e:
-        print(f"Error parsing JSON response: {e}")
+        LOG.error("Error parsing JSON response: %s", e)
         raise
+
+
+def _read_season_file(output_file):
+    if not output_file.exists():
+        return {}
+    try:
+        with open(output_file, 'r') as handle:
+            overall_data = json.load(handle)
+    except json.JSONDecodeError:
+        LOG.warning("Existing %s is not valid JSON. Replacing it.", output_file.name)
+        return {}
+    if not isinstance(overall_data, dict):
+        LOG.warning("Existing %s is not a season map. Replacing it.", output_file.name)
+        return {}
+    return overall_data
 
 
 if __name__ == '__main__':

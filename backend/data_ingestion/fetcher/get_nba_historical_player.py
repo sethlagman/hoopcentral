@@ -1,18 +1,27 @@
-import os
-import requests
 import json
+import os
+import sys
 import time
-from pathlib import Path
-from dotenv import load_dotenv
 from datetime import datetime
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 try:
     from .http_utils import get_with_retry
 except ImportError:
     from http_utils import get_with_retry
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+_INGEST = Path(__file__).resolve().parent.parent
+if str(_INGEST) not in sys.path:
+    sys.path.insert(0, str(_INGEST))
+
+from log import get_logger
+from validate import assert_result_set
+
+BASE_DIR = _INGEST
 load_dotenv(BASE_DIR.parent.parent / '.env')
+LOG = get_logger('hoopcentral.ingestion.player_history')
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
 API_URL = 'https://stats.nba.com/stats/playerindex'
 
@@ -47,10 +56,11 @@ def get_nba_player_for_season(output_file, season):
     }
 
     try:
-        print(f"Fetching data for season {season}...")
+        LOG.info("Fetching data for season %s...", season)
         response = get_with_retry(API_URL, params=params, headers=headers)
 
         data = response.json()
+        assert_result_set(data, f'player {season}')
 
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -61,17 +71,19 @@ def get_nba_player_for_season(output_file, season):
                     overall_data = json.load(f)
                 except json.JSONDecodeError:
                     overall_data = {}
+        if not isinstance(overall_data, dict):
+            overall_data = {}
 
         overall_data[season] = data
 
         with open(output_file, 'w') as f:
             json.dump(overall_data, f, indent=2)
 
-        print(f"Successfully saved {season} data to {output_file.name}")
+        LOG.info("Successfully saved %s data to %s", season, output_file.name)
         return True
 
     except Exception as e:
-        print(f"Error fetching data for {season}: {e}")
+        LOG.error("Error fetching data for %s: %s", season, e)
         return False
 
 
@@ -85,7 +97,7 @@ def fetch_all_nba_historical_players():
     current_year = datetime.today().year - 1
     end_year = int(os.environ.get('END_YEAR', current_year))
 
-    print(f"Starting historical data fetch into {output_path}...")
+    LOG.info("Starting historical data fetch into %s...", output_path)
 
     for year in range(start_year, end_year + 1):
 
@@ -96,9 +108,9 @@ def fetch_all_nba_historical_players():
         if success:
             time.sleep(0.8)
         else:
-            print(f"Failed to retrieve data for {season_str}. Moving to next season.")
+            LOG.error("Failed to retrieve data for %s. Moving to next season.", season_str)
 
-    print("Historical data fetch complete.")
+    LOG.info("Historical data fetch complete.")
 
 if __name__ == '__main__':
     fetch_all_nba_historical_players()

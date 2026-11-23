@@ -1,10 +1,20 @@
 import json
+import sys
 import time
-from nba_api.stats.static import teams
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from nba_api.stats.static import teams
+
+_INGEST = Path(__file__).resolve().parent.parent
+if str(_INGEST) not in sys.path:
+    sys.path.insert(0, str(_INGEST))
+
+from log import get_logger
+from validate import assert_team_list
+
+BASE_DIR = _INGEST
 OUTPUT_DIR = BASE_DIR / 'output' / 'raw'
+LOG = get_logger('hoopcentral.ingestion.team_fetch')
 
 MAX_RETRIES = 5
 RETRY_BACKOFF_BASE = 1.0
@@ -17,18 +27,19 @@ def get_nba_team(output_file=OUTPUT_DIR / 'nba_team_data.json'):
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            print(f"Fetching team data (attempt {attempt}/{MAX_RETRIES})...")
+            LOG.info("Fetching team data (attempt %s/%s)...", attempt, MAX_RETRIES)
             data = teams.get_teams()
+            assert_team_list(data)
             break
         except Exception as e:
             last_error = e
-            print(f"Attempt {attempt}/{MAX_RETRIES} failed: {e}. Retrying...")
+            LOG.warning("Attempt %s/%s failed: %s. Retrying...", attempt, MAX_RETRIES, e)
             if attempt < MAX_RETRIES:
                 delay = min(RETRY_BACKOFF_BASE * (RETRY_BACKOFF_FACTOR ** (attempt - 1)), 60)
-                print(f"Waiting {delay:.1f}s before retry...")
+                LOG.info("Waiting %.1fs before retry...", delay)
                 time.sleep(delay)
     else:
-        print(f"Error fetching team data: {last_error}")
+        LOG.error("Error fetching team data: %s", last_error)
         raise last_error
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -36,9 +47,9 @@ def get_nba_team(output_file=OUTPUT_DIR / 'nba_team_data.json'):
     try:
         with open(output_file, 'w') as f:
             json.dump(data, f, indent=2)
-        print(f"Successfully downloaded and saved to {output_file}")
+        LOG.info("Successfully downloaded and saved to %s", output_file)
     except Exception as e:
-        print(f"Unexpected error writing file: {e}")
+        LOG.error("Unexpected error writing file: %s", e)
         raise
 
 

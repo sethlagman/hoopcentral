@@ -180,3 +180,29 @@ class GamesFromScheduleTests(SimpleTestCase):
 
         self.assertEqual([g["game_id"] for g in games], ["0022500001"])
         self.assertEqual(games[0]["status_text"], "Final")
+
+    def test_canonical_season_and_skips_unreadable_date(self):
+        celtics = (1610612738, "Boston", "Celtics", "BOS")
+        knicks = (1610612752, "New York", "Knicks", "NYK")
+        bad = _schedule_game("0022500002", knicks, celtics)
+        bad["gameDateEst"] = "not-a-date"
+        payload = {
+            "leagueSchedule": {
+                "seasonYear": "2025",
+                "gameDates": [
+                    {
+                        "games": [
+                            _schedule_game("0022500001", knicks, celtics),
+                            bad,
+                        ]
+                    }
+                ],
+            }
+        }
+        games = self.processor.games_from_schedule(payload, season="2025")
+        self.assertEqual([game["game_id"] for game in games], ["0022500001"])
+        self.assertEqual(games[0]["season"], "2025-26")
+
+    def test_rejects_non_object_payload(self):
+        with self.assertRaises(self.processor.InvalidPayload):
+            self.processor.games_from_schedule([])
