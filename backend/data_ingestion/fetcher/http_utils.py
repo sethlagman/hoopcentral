@@ -1,6 +1,17 @@
 """GET with retries for the stats.nba.com fetchers."""
+import sys
 import time
+from pathlib import Path
+
 import requests
+
+_INGEST = Path(__file__).resolve().parent.parent
+if str(_INGEST) not in sys.path:
+    sys.path.insert(0, str(_INGEST))
+
+from log import get_logger
+
+LOG = get_logger('hoopcentral.ingestion.http')
 
 # stats.nba.com is slow and drops connections often.
 DEFAULT_TIMEOUT = 45
@@ -81,7 +92,7 @@ def get_with_retry(
 
 def _log_retry(attempt, max_retries, status_code, error):
     status = f" (HTTP {status_code})" if status_code else ""
-    print(f"Attempt {attempt}/{max_retries} failed{status}: {error}. Retrying...")
+    LOG.warning("Attempt %s/%s failed%s: %s. Retrying...", attempt, max_retries, status, error)
 
 
 def _sleep_before_retry(attempt, max_retries, backoff_base, backoff_factor):
@@ -89,5 +100,5 @@ def _sleep_before_retry(attempt, max_retries, backoff_base, backoff_factor):
         return
     delay = backoff_base * (backoff_factor ** (attempt - 1))
     delay = min(delay, 60)
-    print(f"Waiting {delay:.1f}s before retry...")
+    LOG.info("Waiting %.1fs before retry...", delay)
     time.sleep(delay)

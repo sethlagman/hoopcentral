@@ -4,6 +4,7 @@ from django.test import TestCase
 
 from core.models import Player, Statistic, Team
 from core.season_utils import (
+    canonical_season,
     resolved_season_label,
     resolve_season_start_year,
     season_lookup_variants,
@@ -40,6 +41,14 @@ class SeasonParsingTests(TestCase):
 
     def test_resolved_season_label_single(self):
         self.assertEqual(resolved_season_label(["2025-26"]), "2025-26")
+
+    def test_canonical_season_forms(self):
+        self.assertEqual(canonical_season("2025"), "2025-26")
+        self.assertEqual(canonical_season("2025-26"), "2025-26")
+        self.assertEqual(canonical_season("2025-2026"), "2025-26")
+        self.assertEqual(canonical_season("1999"), "1999-00")
+        self.assertEqual(canonical_season(None), "")
+        self.assertEqual(canonical_season("preseason"), "preseason")
 
 
 class StatsWithinCareerYearsTests(TestCase):

@@ -85,3 +85,33 @@ class Game(models.Model):
 
     def __str__(self):
         return f'{self.away_team_id} at {self.home_team_id} ({self.game_date})'
+
+
+class IngestionRun(models.Model):
+    """One fetch-and-seed attempt. Successful rows record when NBA data last changed."""
+
+    class Status(models.TextChoices):
+        RUNNING = 'running', 'running'
+        SUCCESS = 'success', 'success'
+        FAILED = 'failed', 'failed'
+
+    source = models.CharField(max_length=40)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RUNNING)
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_count = models.PositiveIntegerField(default=0)
+    updated_count = models.PositiveIntegerField(default=0)
+    unchanged_count = models.PositiveIntegerField(default=0)
+    skipped_count = models.PositiveIntegerField(default=0)
+    error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['status', 'finished_at'], name='ingestion_status_finished_idx'),
+            models.Index(fields=['source', 'started_at'], name='ingestion_source_started_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.source} {self.status}'
+
