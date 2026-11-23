@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Team(models.Model):
     team_id = models.CharField('Team ID', primary_key=True, max_length=50)
     full_name = models.CharField('Team full name', max_length=100, null=True)
@@ -9,6 +10,13 @@ class Team(models.Model):
     state = models.CharField('Team state', max_length=50, null=True)
     year_founded = models.IntegerField('Team year founded', null=True)
     logo = models.URLField('Team Logo', null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['abbreviation'], name='team_abbreviation_idx'),
+        ]
 
     def __str__(self):
         return self.full_name
@@ -25,6 +33,14 @@ class Player(models.Model):
     headshot = models.URLField('Player image')
     year_start = models.CharField('Player starting year', max_length=50)
     year_end = models.CharField('Player last year', max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['is_active'], name='player_is_active_idx'),
+            models.Index(fields=['full_name'], name='player_full_name_idx'),
+        ]
 
     def __str__(self):
         return self.full_name
@@ -44,6 +60,20 @@ class Statistic(models.Model):
     ppg = models.DecimalField('Points per game', max_digits=5, decimal_places=1, null=True)
     rpg = models.DecimalField('Rebounds per game', max_digits=5, decimal_places=1, null=True)
     apg = models.DecimalField('Assists per game', max_digits=5, decimal_places=1, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['player', 'season'],
+                name='uniq_statistic_player_season',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['season'], name='statistic_season_idx'),
+            models.Index(fields=['season', 'ppg'], name='statistic_season_ppg_idx'),
+        ]
 
 
 class Standing(models.Model):
@@ -60,6 +90,20 @@ class Standing(models.Model):
     last10 = models.CharField('Team Last 10 Games Standing', max_length=20, null=True)
     overtime = models.CharField('Team Overtime Count', max_length=20)
     winstreak = models.CharField('Team win streak', max_length=20, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['team', 'season'],
+                name='uniq_standing_team_season',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['season'], name='standing_season_idx'),
+            models.Index(fields=['conference'], name='standing_conference_idx'),
+        ]
 
 
 class Game(models.Model):
@@ -79,9 +123,14 @@ class Game(models.Model):
     )
     home_score = models.IntegerField('Home score', null=True, blank=True)
     away_score = models.IntegerField('Away score', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['game_date', 'tip_time_est', 'game_id']
+        indexes = [
+            models.Index(fields=['season', 'game_date'], name='game_season_date_idx'),
+        ]
 
     def __str__(self):
         return f'{self.away_team_id} at {self.home_team_id} ({self.game_date})'
