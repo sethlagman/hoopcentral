@@ -74,6 +74,15 @@ DB_PASSWORD = os.environ.get('DB_PASSWORD')
 DB_HOST = os.environ.get('DB_HOST')
 DB_PORT = os.environ.get('DB_PORT')
 
+
+def _env_int(name, default):
+    raw = os.environ.get(name, str(default))
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return int(default)
+
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
@@ -82,6 +91,7 @@ DATABASES = {
         'PASSWORD': DB_PASSWORD,
         'HOST': DB_HOST,
         'PORT': DB_PORT,
+        'CONN_MAX_AGE': _env_int('DB_CONN_MAX_AGE', 0),
     }
 }
 
@@ -121,9 +131,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# CORS - Allow React frontend (dev: localhost:5173) to call API
+# CORS - Allow React frontend (dev: localhost:5173) to call API.
+# Production settings replace this list from CORS_ALLOWED_ORIGINS.
+_DEFAULT_CORS = 'http://localhost:5173,http://127.0.0.1:5173'
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
+    origin.strip()
+    for origin in os.environ.get('CORS_ALLOWED_ORIGINS', _DEFAULT_CORS).split(',')
+    if origin.strip()
 ]
