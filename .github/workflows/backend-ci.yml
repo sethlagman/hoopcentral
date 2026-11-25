@@ -11,6 +11,13 @@ env:
   SECRET_KEY: ci-dummy-key
   DB_PASSWORD: ci-dummy
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
