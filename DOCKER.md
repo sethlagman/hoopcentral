@@ -1,266 +1,126 @@
-# Docker Setup Guide
+# Docker
 
-This guide covers configuring and running HoopCentral with Docker. The project is split into:
-- **backend/** — Django API + data ingestion
-- **frontend/** — React (Vite) app
+Compose runs Postgres, the API, the Vite dev server, and a one-shot ingest job. Application behavior, environment variables, and the ingestion pipeline are in [README.md](README.md). This file is only the container workflow.
 
-## Prerequisites
+Requires Docker Compose v2 (`docker compose version`).
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/) (v2+)
+## Environment file
 
-Verify installation:
-
-```bash
-docker --version
-docker compose version
-```
-
----
-
-## Configuration
-
-### 1. Create a `.env` file
-
-Create a `.env` file in the **project root** (same directory as `docker-compose.yml`). Docker Compose reads this file to configure the database and backend.
-
-**Required variables:**
+Compose reads `.env` from the repository root (same directory as `docker-compose.yml`). Postgres and Django both use `DB_NAME`, `DB_USER`, and `DB_PASSWORD`. `DB_PASSWORD` has no default; `up` fails without it.
 
 ```env
-# Django - generate a secret key for production
-SECRET_KEY=your-secret-key-here
+SECRET_KEY=change-me
 DEBUG=True
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Database - these are used by both the Postgres container and Django
 DB_NAME=hoopcentral
 DB_USER=postgres
-DB_PASSWORD=your-secure-password
-
-# Data ingestion (optional - for fetcher scripts)
+DB_PASSWORD=change-me
 END_YEAR=2025
 SEASON=2025-26
 ```
 
-**Notes:**
+The backend and ingest services override `DB_HOST=db`, `DB_PORT=5432`, and `DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0`. Do not point those containers at `localhost` for Postgres. The host port is **5433**, mapped to 5432 in the `db` container, so a tool on the machine uses `localhost:5433`.
 
-- `DB_HOST` and `DB_PORT` are **automatically overridden** by Docker Compose when the backend connects to the database (no need to set them).
-- For production, set `DEBUG=False` and use a strong `SECRET_KEY`.
-- Add your domain to `DJANGO_ALLOWED_HOSTS` in production (comma-separated).
+The `db` healthcheck runs `pg_isready -U postgres`. If `DB_USER` is not `postgres`, the check can fail while the server is up, and `ingest` will wait until the check is healthy.
 
----
+`DEBUG=False` belongs on a real deployment. Compose still uses `hoopcentral.settings`, not `hoopcentral.settings_prod`, so SSL redirect and the production CORS list are not applied here.
 
-## Running with Docker
+## Services
 
-### Start everything
+`docker compose up -d --build` the first time, and again after `backend/Dockerfile` or `backend/requirements.txt` changes. Later Python edits do not need a rebuild: `./backend` is mounted on `/app`, and Compose starts Gunicorn with `--workers 1 --reload`. Installed packages stay in the image. The image's own `CMD` (4 workers, no reload) is not what Compose runs.
 
-From the project root:
+The frontend service has no Dockerfile. It is `node:20-alpine`, with `./frontend` mounted at `/app` and an anonymous volume on `/app/node_modules`. The command is `npm install && npm run dev`. `VITE_API_URL` is `http://localhost:8000/api`. The profile block in `docker-compose.yml` is commented out, so the frontend starts with the rest of the stack.
 
-```bash
-docker compose up -d --build
-```
+| Service | Container | Role |
+|---|---|---|
+| `db` | `hoopcentral-db` | Postgres 16. Host `5433` → container `5432`. Volume `postgres_data`. |
+| `backend` | `hoopcentral-backend` | `migrate`, then Gunicorn on `8000`. Working directory `/app/hoopcentral`. |
+| `frontend` | `hoopcentral-frontend` | Vite on `5173`. |
+| `ingest` | `<project>-ingest-1` | `sh /app/data_ingestion/ingest.sh`, then exit. `restart: "no"`. |
 
-- `-d` runs containers in the background
-- `--build` is required on the first run, and again only after `backend/Dockerfile` or `backend/requirements.txt` changes
+`<project>` is the Compose project name, the directory name by default (`hoopcentral-ingest-1` in this checkout).
 
-Later code edits do not need a rebuild. Compose bind-mounts `./backend` onto `/app`, and the backend command runs Gunicorn with `--reload`. Packages stay in the `hoopcentral-backend` image. `COPY . .` still runs at build time, but the mount hides that copy while the container is up.
+`ingest` waits until `db` is healthy. It does not wait for `backend`. Both run `migrate`. The API process never starts the pipeline, and restarting `backend` does not rerun it.
 
-`docker compose up -d` starts four services:
-
-| Service | Container | What it does |
-|---------|-----------|--------------|
-| `db` | `hoopcentral-db` | Postgres 16. Host port **5433** maps to container port 5432 |
-| `backend` | `hoopcentral-backend` | Migrates, then Gunicorn on port 8000 with 1 worker and `--reload` |
-| `frontend` | `hoopcentral-frontend` | `npm install && npm run dev` on port 5173. `VITE_API_URL` is `http://localhost:8000/api` |
-| `ingest` | `hoopcentral-ingest-1` | One-shot. Runs `ingest.sh`, then exits. `restart: "no"` |
-
-The frontend profile lines in `docker-compose.yml` are commented out, so the frontend starts with the rest of the stack. It is not a separate `--profile frontend` command.
-
-### Access the application
-
-- **Backend API:** http://localhost:8000
-- **API base:** http://localhost:8000/api/
-- **Frontend:** http://localhost:5173
-- **Postgres from the host:** `localhost:5433`
-
-Inside the Compose network the backend uses `DB_HOST=db` and `DB_PORT=5432`.
-
-### Ingest
-
-Ingestion is not part of the API process. A long fetch does not block Gunicorn, and restarting the API does not rerun the pipeline. On AWS, run `backend/data_ingestion/ingest.sh` as its own task.
-
-`docker compose up` starts ingest once. To run it again:
+`up` starts `ingest`. When the script exits, the daemon does not restart it. A later `up` starts that stopped container, which runs the script again. To run a separate one-off container:
 
 ```bash
 docker compose run --rm ingest
 ```
 
-The ingest service waits until Postgres is healthy, then `ingest.sh`:
+`seed_stat` prints nothing until every row is written. A log that stops after players were seeded is still inside that command. Fetcher timeouts and the `stats.nba.com` headers are described in the README ingestion section. `set -eu` means the first failed command skips every later seed.
 
-1. If `nba_player_data.json` or `nba_standing_data.json` is missing, run the matching historical fetcher and rename the historical file to the standard name. If the standard file exists, skip history and refresh the current season in place.
-2. Refresh teams and the season schedule on every run.
-3. Process player, team, standing, and schedule JSON.
-4. Migrate, then seed in this order: team, standing, player, stat, schedule.
-
-`seed_stat` writes one database row at a time and prints nothing until the loop finishes. The log can sit on "NBA players seeded successfully" for a long time. `seed_schedule` runs only after that command exits. `set -eu` stops the script on the first failed command, so a fetcher timeout never reaches the seeds.
-
-`stats.nba.com` accepts a connection and then sends no body when the request looks like a bot. Python reports that as a read timeout. Player and standing fetchers send a Chrome 140 `User-Agent` and `Origin: https://www.nba.com`. The schedule fetcher copies the `nba_api` headers and adds that `Origin`. Passing `headers` into `ScheduleLeagueV2` replaces the library defaults, so the full header set has to be passed. `get_nba_team.py` reads a static team list inside `nba_api` and does not call `stats.nba.com`.
-
-### View logs
+## Commands
 
 ```bash
-# Backend logs (Django/Gunicorn)
+docker compose up -d --build    # first run, or after Dockerfile / requirements.txt changes
+docker compose up -d            # start without rebuilding
+docker compose ps
 docker compose logs -f backend
-
-# Database logs
-docker compose logs -f db
-
-# All services
-docker compose logs -f
-```
-
-Press `Ctrl+C` to stop following logs.
-
----
-
-## Common Commands
-
-| Command | Description |
-|--------|-------------|
-| `docker compose up -d --build` | Start and build (first run, or after Dockerfile / `requirements.txt` changes) |
-| `docker compose up -d` | Start without rebuilding. Local backend code is already mounted |
-| `docker compose run --rm ingest` | Run the ingestion pipeline again |
-| `docker compose down` | Stop and remove containers |
-| `docker compose down -v` | Stop and remove containers **and volumes** (deletes database data) |
-| `docker compose restart backend` | Restart only the backend |
-| `docker compose logs -f ingest` | Follow the one-shot ingest log |
-| `docker compose ps` | List running containers |
-
----
-
-## Running Django Commands
-
-Execute management commands inside the backend container:
-
-```bash
-# Create a superuser
-docker compose exec backend python manage.py createsuperuser
-
-# Run migrations manually (normally done on startup)
-docker compose exec backend python manage.py migrate
-
-# Run the test suite
-docker compose exec backend python manage.py test
-
-# Schedule tests without touching the Compose Postgres database
-docker exec -w /app/hoopcentral -e DJANGO_SETTINGS_MODULE=hoopcentral.settings_test hoopcentral-backend python manage.py test core.tests.test_schedule
-```
-
-The backend working directory is `/app/hoopcentral`, so `manage.py` runs without a `cd`.
-
----
-
-## Data Ingestion (from inside the container)
-
-Prefer the one-shot service:
-
-```bash
+docker compose logs -f ingest
 docker compose run --rm ingest
+docker compose restart backend
+docker compose down             # stop and remove containers; keep the volume
+docker compose down -v          # also delete postgres_data
 ```
 
-To run one script by hand:
+`manage.py` is on the backend working directory:
+
+```bash
+docker compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py ingestion_status
+```
+
+`docker compose exec backend python manage.py test` uses the Compose Postgres database and `hoopcentral.settings`. The SQLite suite does not:
+
+```bash
+docker exec -w /app/hoopcentral \
+  -e DJANGO_SETTINGS_MODULE=hoopcentral.settings_test \
+  hoopcentral-backend python manage.py test
+```
+
+One fetcher, without a full ingest:
 
 ```bash
 docker compose exec backend sh -c "cd /app && python data_ingestion/fetcher/get_nba_schedule.py"
 ```
 
-Seed commands, in pipeline order:
+That writes raw JSON only. Processing and `seed_schedule` still have to run before `/api/schedule` changes. Seed order, when invoked by hand: `seed_team`, `seed_standing`, `seed_player`, `seed_stat`, `seed_schedule`.
 
-```bash
-docker compose exec backend python manage.py seed_team
-docker compose exec backend python manage.py seed_standing
-docker compose exec backend python manage.py seed_player
-docker compose exec backend python manage.py seed_stat
-docker compose exec backend python manage.py seed_schedule
-```
+## URLs
 
----
+- API: http://localhost:8000
+- API root: http://localhost:8000/api/
+- Health: http://localhost:8000/api/health
+- Frontend: http://localhost:5173
+- Postgres from the host: `localhost:5433`
 
-## Troubleshooting
+The Vite proxy inside the frontend container targets `127.0.0.1:8000`, which is not the `backend` service. The browser must use `VITE_API_URL`.
 
-### Backend won't start / database connection errors
+## Failures
 
-1. Ensure the database is healthy:
-   ```bash
-   docker compose ps
-   ```
-   The `db` service should show "healthy".
+**Backend exits on database connection.** `docker compose ps` should show `db` as healthy. The first boot needs a few seconds for Postgres to initialize. `DB_HOST` inside the backend container must stay `db`. Changing the host port mapping does not change that.
 
-2. Wait a few seconds on first run—PostgreSQL may need time to initialize.
+**`db` never becomes healthy.** The healthcheck user is `postgres`. Match `DB_USER`, or change the check.
 
-3. Restart everything:
-   ```bash
-   docker compose down
-   docker compose up -d
-   ```
+**Port in use.** Host mappings are `5433:5432`, `8000:8000`, and `5173:5173`. Change the left-hand port in `docker-compose.yml`. If the API moves off 8000, change `VITE_API_URL` as well. The frontend reads that value in the browser.
 
-### Port already in use
+**Ingest exits before `seed_schedule`.** Read the ingest log. A `stats.nba.com` read timeout fails the fetcher and `ingest.sh` stops. If the log already printed that players were seeded and the container is still running, `seed_stat` has not finished.
 
-If ports are in use, change them in `docker-compose.yml`. The database uses **5433** on the host so it does not collide with a local Postgres on 5432. The frontend uses **5173**. For the backend:
+**Code changes are not in the API.** The bind mount covers `/app`. New pip dependencies are not in the mount; rebuild after `requirements.txt` changes. Gunicorn `--reload` watches Python files, not new packages.
 
-```yaml
-# backend service
-ports:
-  - "8001:8000"   # Use 8001 on host instead
-```
+**Empty API after a fresh volume.** `ingest` has to finish, including `seed_stat`. `GET /api/health` returns `data_updated_at: null` until a seed command records a successful `IngestionRun`.
 
-Then use http://localhost:8001 for the API.
-
-### Rebuild from scratch
-
-To clear the database and rebuild:
+Rebuild including the database:
 
 ```bash
 docker compose down -v
 docker compose up -d --build
 ```
 
-### Ingest stops before the schedule seed
+`docker compose exec backend env` prints the environment the API process sees.
 
-`ingest.sh` exits on the first failed command. A `stats.nba.com` read timeout in a fetcher means the Chrome `User-Agent` or `Origin` header was rejected. See the ingest section above.
+## Paths inside the backend container
 
-If the log has already printed "NBA players seeded successfully" and the container is still running, `seed_stat` is still writing rows. `seed_schedule` has not started yet.
-
-### View environment variables
-
-Check what the backend sees:
-
-```bash
-docker compose exec backend env
-```
-
----
-
-## Project Layout (Docker)
-
-**On host:**
-```
-hoopcentral/
-├── backend/           # Docker build context for backend
-├── frontend/          # Mounted into frontend container
-├── docker-compose.yml
-└── .env
-```
-
-**Inside backend container (`/app`):**
-```
-/app/
-├── data_ingestion/    # Fetchers and processors
-├── hoopcentral/       # Django project (WORKDIR for manage.py)
-│   ├── manage.py
-│   ├── core/
-│   └── hoopcentral/
-└── requirements.txt
-```
-
-The backend container runs from `/app/hoopcentral` so `manage.py` and other Django commands work directly.
+Working directory `/app/hoopcentral` (`manage.py`, `core/`, project package `hoopcentral/`). Fetchers and `ingest.sh` are under `/app/data_ingestion/`. `requirements.txt` is `/app/requirements.txt`. The image creates `/app/data_ingestion/output/processed` at build time; at runtime the bind mount replaces `/app` with the host `backend/` directory.
